@@ -22,14 +22,19 @@ let package = Package(
     ],
     targets: [
         .target(
+            name: "WaterBridgeCore",
+            path: "Sources/Core"
+        ),
+        .target(
             name: "WaterBridgeKit",
             dependencies: [
+                "WaterBridgeCore",
                 .product(
                     name: "ComposableArchitecture",
                     package: "swift-composable-architecture"
                 )
             ],
-            path: "Sources"
+            path: "Sources/Features"
         )
     ]
 )

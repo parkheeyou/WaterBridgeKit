@@ -1,5 +1,6 @@
 #if canImport(UIKit) && canImport(WebKit)
 import SwiftUI
+import WaterBridgeCore
 import WebKit
 
 struct WaterWebViewRepresentable: UIViewRepresentable {
