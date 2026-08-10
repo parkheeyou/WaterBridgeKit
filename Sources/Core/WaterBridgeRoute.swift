@@ -1,14 +1,24 @@
 import Foundation
 
 /// WaterBridge가 처리할 수 있는 단일 네이티브 API 정의입니다.
-struct WaterBridgeRoute {
-    typealias Handler = @MainActor (WaterBridgeMessage) -> Any
+package struct WaterBridgeRoute {
+    package typealias Handler = @MainActor (WaterBridgeMessage) -> Any
 
-    let api: String
-    let version: Int
-    let handler: Handler
+    package let api: String
+    package let version: Int
+    package let handler: Handler
 
-    var descriptor: [String: Any] {
+    package init(
+        api: String,
+        version: Int,
+        handler: @escaping Handler
+    ) {
+        self.api = api
+        self.version = version
+        self.handler = handler
+    }
+
+    package var descriptor: [String: Any] {
         [
             "api": api,
             "version": version
@@ -16,7 +26,7 @@ struct WaterBridgeRoute {
     }
 
     @MainActor
-    func handle(_ message: WaterBridgeMessage) -> Any {
+    package func handle(_ message: WaterBridgeMessage) -> Any {
         handler(message)
     }
 }

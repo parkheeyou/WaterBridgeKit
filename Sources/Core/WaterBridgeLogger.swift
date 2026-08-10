@@ -1,37 +1,37 @@
 import Foundation
 import OSLog
 
-enum WaterBridgeLogger {
+package enum WaterBridgeLogger {
     private static let logger = Logger(
         subsystem: Bundle.main.bundleIdentifier ?? "WaterBridgeKit",
         category: "WaterBridge"
     )
 
-    static func webViewLoadRequested(url: URL) {
+    package static func webViewLoadRequested(url: URL) {
         logger.info(
             "[WEBVIEW][REQUESTED] url=\(url.absoluteString, privacy: .public)"
         )
     }
 
-    static func webViewNavigationStarted(url: URL?) {
+    package static func webViewNavigationStarted(url: URL?) {
         logger.info(
             "[WEBVIEW][STARTED] url=\(url?.absoluteString ?? "unknown", privacy: .public)"
         )
     }
 
-    static func webViewContentCommitted(url: URL?) {
+    package static func webViewContentCommitted(url: URL?) {
         logger.info(
             "[WEBVIEW][COMMITTED] url=\(url?.absoluteString ?? "unknown", privacy: .public)"
         )
     }
 
-    static func webViewLoadFinished(url: URL?, elapsedTime: TimeInterval?) {
+    package static func webViewLoadFinished(url: URL?, elapsedTime: TimeInterval?) {
         logger.info(
             "[WEBVIEW][FINISHED] url=\(url?.absoluteString ?? "unknown", privacy: .public) elapsed=\(formatted(elapsedTime), privacy: .public)s"
         )
     }
 
-    static func webViewLoadFailed(
+    package static func webViewLoadFailed(
         url: URL?,
         error: Error,
         elapsedTime: TimeInterval?
@@ -42,25 +42,25 @@ enum WaterBridgeLogger {
         )
     }
 
-    static func webViewLoadCancelled(url: URL?) {
+    package static func webViewLoadCancelled(url: URL?) {
         logger.info(
             "[WEBVIEW][CANCELLED] url=\(url?.absoluteString ?? "unknown", privacy: .public)"
         )
     }
 
-    static func received(_ message: WaterBridgeMessage) {
+    package static func received(_ message: WaterBridgeMessage) {
         logger.info(
             "[RECEIVED] api=\(message.api ?? "unknown", privacy: .public) source=\(message.sourceURL?.absoluteString ?? "unknown", privacy: .public) request=\(description(of: message.body), privacy: .public)"
         )
     }
 
-    static func responded(api: String, response: Any) {
+    package static func responded(api: String, response: Any) {
         logger.info(
             "[RESPONDED] api=\(api, privacy: .public) response=\(description(of: response), privacy: .public)"
         )
     }
 
-    static func rejected(reason: String, body: Any) {
+    package static func rejected(reason: String, body: Any) {
         logger.error(
             "[REJECTED] reason=\(reason, privacy: .public) request=\(description(of: body), privacy: .public)"
         )

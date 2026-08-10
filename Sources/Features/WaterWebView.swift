@@ -1,5 +1,6 @@
 #if canImport(UIKit) && canImport(WebKit)
 import SwiftUI
+import WaterBridgeCore
 
 /// URL을 앱 내부에서 표시하고 JavaScript 브릿지 메시지를 전달하는 SwiftUI 웹뷰입니다.
 ///
