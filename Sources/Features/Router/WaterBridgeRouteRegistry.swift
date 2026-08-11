@@ -3,18 +3,13 @@ import WaterBridgeCore
 /// WaterBridgeKit에서 지원하는 브릿지 API를 한 곳에서 관리합니다.
 @MainActor
 enum WaterBridgeRouteRegistry {
-    static let routes: [WaterBridgeRoute] = [
+    static let routes = WaterBridgeAPI.all.map { definition in
         WaterBridgeRoute(
-            api: "water://routeApiList",
-            version: 2,
-            handler: WaterBridgeRouteAPIListHandler.handle
-        ),
-        WaterBridgeRoute(
-            api: "water://nativeInfo",
-            version: 2,
-            handler: WaterBridgeNativeInfoHandler.handle
+            api: definition.api,
+            version: definition.version,
+            handler: definition.handler
         )
-    ]
+    }
 
     static var descriptors: [[String: Any]] {
         routes.map(\.descriptor)

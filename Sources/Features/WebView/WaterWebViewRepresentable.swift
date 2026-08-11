@@ -4,7 +4,7 @@ import WaterBridgeCore
 import WebKit
 
 struct WaterWebViewRepresentable: UIViewRepresentable {
-    static let bridgeChannel = "waterBridge"
+    static let bridgeChannel = "Bridge"
 
     let url: URL
     @Binding var isLoading: Bool
@@ -22,13 +22,14 @@ struct WaterWebViewRepresentable: UIViewRepresentable {
             contentWorld: .page,
             name: Self.bridgeChannel
         )
-        userContentController.addUserScript(Self.bridgeBootstrapScript)
+        // userContentController.addUserScript(Self.bridgeBootstrapScript)
 
         let configuration = WKWebViewConfiguration()
         configuration.defaultWebpagePreferences.allowsContentJavaScript = true
         configuration.userContentController = userContentController
 
         let webView = WKWebView(frame: .zero, configuration: configuration)
+        context.coordinator.webView = webView
         webView.navigationDelegate = context.coordinator
         webView.uiDelegate = context.coordinator
         webView.allowsBackForwardNavigationGestures = true
@@ -50,10 +51,12 @@ struct WaterWebViewRepresentable: UIViewRepresentable {
         )
         webView.navigationDelegate = nil
         webView.uiDelegate = nil
+        coordinator.webView = nil
     }
 
     final class Coordinator: NSObject, WKNavigationDelegate, WKUIDelegate, WKScriptMessageHandlerWithReply {
         var parent: WaterWebViewRepresentable
+        weak var webView: WKWebView?
         private var loadStartedAt: Date?
 
         init(_ parent: WaterWebViewRepresentable) {
@@ -80,6 +83,36 @@ struct WaterWebViewRepresentable: UIViewRepresentable {
                 body: message.body,
                 sourceURL: message.frameInfo.request.url
             )
+            handleBridgeMessage(
+                bridgeMessage,
+                replyHandler: replyHandler
+            )
+        }
+
+        func webView(
+            _ webView: WKWebView,
+            decidePolicyFor navigationAction: WKNavigationAction,
+            decisionHandler: @escaping (WKNavigationActionPolicy) -> Void
+        ) {
+            guard let url = navigationAction.request.url,
+                  url.scheme?.lowercased() == "water" else {
+                decisionHandler(.allow)
+                return
+            }
+
+            let bridgeMessage = WaterBridgeMessage(
+                channel: "water",
+                body: url.absoluteString,
+                sourceURL: webView.url
+            )
+            handleBridgeMessage(bridgeMessage)
+            decisionHandler(.cancel)
+        }
+
+        private func handleBridgeMessage(
+            _ bridgeMessage: WaterBridgeMessage,
+            replyHandler: (@MainActor (Any?, String?) -> Void)? = nil
+        ) {
             WaterBridgeLogger.received(bridgeMessage)
             parent.onBridgeMessage(bridgeMessage)
 
@@ -88,13 +121,24 @@ struct WaterWebViewRepresentable: UIViewRepresentable {
                     reason: "브릿지 API를 확인할 수 없습니다.",
                     body: bridgeMessage.body
                 )
-                replyHandler(nil, nil)
+                replyHandler?(nil, nil)
                 return
             }
 
             let response = WaterBridgeRouter.response(for: bridgeMessage)
             WaterBridgeLogger.responded(api: api, response: response)
-            replyHandler(response, nil)
+
+            if let callback = bridgeMessage.callback,
+               let webView {
+                WaterBridgeCallbackResponder.respond(
+                    api: api,
+                    callback: callback,
+                    response: response,
+                    in: webView
+                )
+            }
+
+            replyHandler?(response, nil)
         }
 
         func webView(_ webView: WKWebView, didStartProvisionalNavigation navigation: WKNavigation!) {
@@ -170,57 +214,57 @@ struct WaterWebViewRepresentable: UIViewRepresentable {
         }
     }
 
-    private static let bridgeBootstrapScript = WKUserScript(
-        source: """
-        (() => {
-          const call = function(api, payload) {
-            return window.webkit.messageHandlers.waterBridge.postMessage({
-              api: api,
-              payload: payload === undefined ? null : payload
-            });
-          };
-
-          const callWithCallback = function(api, params, callback) {
-            return call(api, params)
-              .then((response) => {
-                if (typeof callback === "function") callback(response);
-                return response;
-              })
-              .catch((error) => {
-                const response = {
-                  status: {
-                    code: "9999",
-                    message: error && error.message
-                      ? error.message
-                      : "브릿지 호출에 실패했습니다."
-                  },
-                  data: null
-                };
-                if (typeof callback === "function") callback(response);
-                return response;
-              });
-          };
-
-          window.WaterBridge = Object.freeze({
-            call: call,
-            postMessage: function(action, payload) {
-              return window.webkit.messageHandlers.waterBridge.postMessage({
-              action: action,
-              payload: payload === undefined ? null : payload
-            });
-            },
-            routeApiList: function(params, callback) {
-              return callWithCallback(
-                "water://routeApiList",
-                params || {},
-                callback
-              );
-            }
-          });
-        })();
-        """,
-        injectionTime: .atDocumentStart,
-        forMainFrameOnly: true
-    )
+//    private static let bridgeBootstrapScript = WKUserScript(
+//        source: """
+//        (() => {
+//          const call = function(api, payload) {
+//            return window.webkit.messageHandlers.waterBridge.postMessage({
+//              api: api,
+//              payload: payload === undefined ? null : payload
+//            });
+//          };
+//
+//          const callWithCallback = function(api, params, callback) {
+//            return call(api, params)
+//              .then((response) => {
+//                if (typeof callback === "function") callback(response);
+//                return response;
+//              })
+//              .catch((error) => {
+//                const response = {
+//                  status: {
+//                    code: "9999",
+//                    message: error && error.message
+//                      ? error.message
+//                      : "브릿지 호출에 실패했습니다."
+//                  },
+//                  data: null
+//                };
+//                if (typeof callback === "function") callback(response);
+//                return response;
+//              });
+//          };
+//
+//          window.WaterBridge = Object.freeze({
+//            call: call,
+//            postMessage: function(action, payload) {
+//              return window.webkit.messageHandlers.waterBridge.postMessage({
+//              action: action,
+//              payload: payload === undefined ? null : payload
+//            });
+//            },
+//            routeApiList: function(params, callback) {
+//              return callWithCallback(
+//                "water://routeApiList",
+//                params || {},
+//                callback
+//              );
+//            }
+//          });
+//        })();
+//        """,
+//        injectionTime: .atDocumentStart,
+//        forMainFrameOnly: true
+//    )
 }
 #endif

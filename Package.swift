@@ -35,6 +35,16 @@ let package = Package(
                 )
             ],
             path: "Sources/Features"
+        ),
+        .testTarget(
+            name: "WaterBridgeCoreTests",
+            dependencies: ["WaterBridgeCore"],
+            path: "Tests/WaterBridgeCoreTests"
+        ),
+        .testTarget(
+            name: "WaterBridgeKitTests",
+            dependencies: ["WaterBridgeKit", "WaterBridgeCore"],
+            path: "Tests/WaterBridgeKitTests"
         )
     ]
 )
