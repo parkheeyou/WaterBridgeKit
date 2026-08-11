@@ -3,6 +3,7 @@ import SwiftUI
 import WaterBridgeCore
 import WebKit
 
+// 웹뷰 설정
 struct WaterWebViewRepresentable: UIViewRepresentable {
     static let bridgeChannel = "Bridge"
 
@@ -101,7 +102,7 @@ struct WaterWebViewRepresentable: UIViewRepresentable {
             }
 
             let bridgeMessage = WaterBridgeMessage(
-                channel: "water",
+                channel: bridgeChannel,
                 body: url.absoluteString,
                 sourceURL: webView.url
             )
@@ -141,18 +142,27 @@ struct WaterWebViewRepresentable: UIViewRepresentable {
             replyHandler?(response, nil)
         }
 
-        func webView(_ webView: WKWebView, didStartProvisionalNavigation navigation: WKNavigation!) {
+        func webView(
+            _ webView: WKWebView,
+            didStartProvisionalNavigation navigation: WKNavigation!
+        ) {
             loadStartedAt = Date()
             parent.isLoading = true
             parent.errorMessage = nil
             WaterBridgeLogger.webViewNavigationStarted(url: webView.url ?? parent.url)
         }
 
-        func webView(_ webView: WKWebView, didCommit navigation: WKNavigation!) {
+        func webView(
+            _ webView: WKWebView,
+            didCommit navigation: WKNavigation!
+        ) {
             WaterBridgeLogger.webViewContentCommitted(url: webView.url)
         }
 
-        func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
+        func webView(
+            _ webView: WKWebView,
+            didFinish navigation: WKNavigation!
+        ) {
             parent.isLoading = false
             WaterBridgeLogger.webViewLoadFinished(
                 url: webView.url,
@@ -195,7 +205,10 @@ struct WaterWebViewRepresentable: UIViewRepresentable {
             loadStartedAt.map { Date().timeIntervalSince($0) }
         }
 
-        private func show(_ error: Error, in webView: WKWebView) {
+        private func show(
+            _ error: Error,
+            in webView: WKWebView
+        ) {
             let nsError = error as NSError
             if nsError.code == NSURLErrorCancelled {
                 WaterBridgeLogger.webViewLoadCancelled(url: webView.url)

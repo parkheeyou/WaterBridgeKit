@@ -6,14 +6,14 @@ import WaterBridgeCore
 ///
 /// 웹에서는 다음 두 방식 중 하나로 네이티브를 호출할 수 있습니다.
 /// ```javascript
-/// window.WaterBridge.routeApiList({}, (response) => {
+/// window.Bridge.routeApiList({}, (response) => {
 ///   console.log(response.status);
 ///   console.log(response.data);
 /// });
 ///
-/// const response = await window.WaterBridge.call("water://routeApiList");
+/// const response = await window.Bridge.call("water://routeApiList");
 ///
-/// const directResponse = await window.webkit.messageHandlers.waterBridge
+/// const directResponse = await window.webkit.messageHandlers.Bridge
 ///   .postMessage("water://routeApiList");
 ///
 /// console.log(response.status.code); // "0000"
