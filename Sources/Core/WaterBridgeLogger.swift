@@ -60,6 +60,22 @@ package enum WaterBridgeLogger {
         )
     }
 
+    package static func callbackCompleted(api: String, callback: String) {
+        logger.info(
+            "[CALLBACK][COMPLETED] api=\(api, privacy: .public) callback=\(callback, privacy: .public)"
+        )
+    }
+
+    package static func callbackFailed(
+        api: String,
+        callback: String,
+        error: Error
+    ) {
+        logger.error(
+            "[CALLBACK][FAILED] api=\(api, privacy: .public) callback=\(callback, privacy: .public) message=\(error.localizedDescription, privacy: .public)"
+        )
+    }
+
     package static func rejected(reason: String, body: Any) {
         logger.error(
             "[REJECTED] reason=\(reason, privacy: .public) request=\(description(of: body), privacy: .public)"
