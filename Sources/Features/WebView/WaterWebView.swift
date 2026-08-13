@@ -6,14 +6,14 @@ import WaterBridgeCore
 ///
 /// 웹에서는 다음 두 방식 중 하나로 네이티브를 호출할 수 있습니다.
 /// ```javascript
-/// window.WaterBridge.routeApiList({}, (response) => {
+/// window.Bridge.routeApiList({}, (response) => {
 ///   console.log(response.status);
 ///   console.log(response.data);
 /// });
 ///
-/// const response = await window.WaterBridge.call("water://routeApiList");
+/// const response = await window.Bridge.call("water://routeApiList");
 ///
-/// const directResponse = await window.webkit.messageHandlers.waterBridge
+/// const directResponse = await window.webkit.messageHandlers.Bridge
 ///   .postMessage("water://routeApiList");
 ///
 /// console.log(response.status.code); // "0000"
@@ -21,6 +21,7 @@ import WaterBridgeCore
 /// ```
 public struct WaterWebView: View {
     private let url: URL
+    private let configuration: WaterBridgeConfiguration
     private let onBridgeMessage: WaterBridgeMessageHandler
 
     @State private var isLoading = true
@@ -28,9 +29,11 @@ public struct WaterWebView: View {
 
     public init(
         url: URL,
+        configuration: WaterBridgeConfiguration = .init(),
         onBridgeMessage: @escaping WaterBridgeMessageHandler = { _ in }
     ) {
         self.url = url
+        self.configuration = configuration
         self.onBridgeMessage = onBridgeMessage
     }
 
@@ -38,6 +41,7 @@ public struct WaterWebView: View {
         ZStack {
             WaterWebViewRepresentable(
                 url: url,
+                bridgeConfiguration: configuration,
                 isLoading: $isLoading,
                 errorMessage: $errorMessage,
                 onBridgeMessage: onBridgeMessage

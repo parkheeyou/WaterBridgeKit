@@ -1,6 +1,7 @@
 import Foundation
 import OSLog
 
+// 로그 찍기
 package enum WaterBridgeLogger {
     private static let logger = Logger(
         subsystem: Bundle.main.bundleIdentifier ?? "WaterBridgeKit",
