@@ -8,7 +8,10 @@ import UIKit
 /// 앱과 기기의 기본 네이티브 정보를 반환합니다.
 @MainActor
 enum WaterBridgeNativeInfoHandler {
-    static func handle(_ message: WaterBridgeMessage) -> Any {
+    static func handle(
+        _ message: WaterBridgeMessage,
+        context: WaterBridgeRouteContext
+    ) -> Any {
         let versionName = Bundle.main.object(
             forInfoDictionaryKey: "CFBundleShortVersionString"
         ) as? String ?? ""

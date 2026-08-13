@@ -43,16 +43,59 @@ struct ContentView: View {
 }
 ```
 
-웹에서는 주입된 `window.WaterBridge`를 통해 네이티브 API를 호출할 수 있습니다.
+기본 WebKit 메시지 채널은 `Bridge`입니다.
 
 ```javascript
-window.WaterBridge.routeApiList({}, (response) => {
-  console.log(response.status);
-  console.log(response.data);
-});
+window.webkit.messageHandlers.Bridge.postMessage(message);
 ```
 
 현재 제공하는 브릿지 API는 다음과 같습니다.
 
 - `water://routeApiList` version 2
 - `water://nativeInfo` version 2
+
+## Custom channel and routes
+
+사용 앱에서 채널 이름을 변경하고 앱 전용 브릿지를 추가할 수 있습니다.
+
+```swift
+import SwiftUI
+import WaterBridgeKit
+
+private let bridgeConfiguration = WaterBridgeConfiguration(
+    channel: "BCUBridge",
+    additionalRoutes: [
+        WaterBridgeRoute(
+            api: "water://appInfo",
+            version: 1
+        ) { message in
+            let requestData = message.data as? [String: Any]
+
+            return WaterBridgeResponse.success(
+                data: [
+                    "appName": "BCU",
+                    "requestData": requestData ?? [:]
+                ]
+            ).value
+        }
+    ]
+)
+
+struct ContentView: View {
+    var body: some View {
+        WaterWebView(
+            url: URL(string: "https://example.com")!,
+            configuration: bridgeConfiguration
+        )
+    }
+}
+```
+
+웹에서는 설정한 채널 이름을 사용합니다.
+
+```javascript
+window.webkit.messageHandlers.BCUBridge.postMessage(message);
+```
+
+추가 Route는 `water://routeApiList` 결과에도 자동으로 포함됩니다.
+기본 Route와 동일한 API를 추가하면 앱에서 등록한 Route가 우선합니다.

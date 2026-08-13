@@ -12,7 +12,13 @@ final class WaterBridgeNativeInfoHandlerTests: XCTestCase {
         )
 
         let response = try XCTUnwrap(
-            WaterBridgeNativeInfoHandler.handle(message) as? [String: Any]
+            WaterBridgeNativeInfoHandler.handle(
+                message,
+                context: WaterBridgeRouteContext(
+                    channel: "Bridge",
+                    routes: []
+                )
+            ) as? [String: Any]
         )
         let data = try XCTUnwrap(response["data"] as? [String: Any])
         let appVersion = try XCTUnwrap(

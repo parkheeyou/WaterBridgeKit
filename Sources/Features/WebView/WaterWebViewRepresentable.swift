@@ -5,9 +5,8 @@ import WebKit
 
 // 웹뷰 설정
 struct WaterWebViewRepresentable: UIViewRepresentable {
-    static let bridgeChannel = "Bridge"
-
     let url: URL
+    let bridgeConfiguration: WaterBridgeConfiguration
     @Binding var isLoading: Bool
     @Binding var errorMessage: String?
     let onBridgeMessage: WaterBridgeMessageHandler
@@ -21,15 +20,18 @@ struct WaterWebViewRepresentable: UIViewRepresentable {
         userContentController.addScriptMessageHandler(
             context.coordinator,
             contentWorld: .page,
-            name: Self.bridgeChannel
+            name: context.coordinator.channel
         )
         // userContentController.addUserScript(Self.bridgeBootstrapScript)
 
-        let configuration = WKWebViewConfiguration()
-        configuration.defaultWebpagePreferences.allowsContentJavaScript = true
-        configuration.userContentController = userContentController
+        let webViewConfiguration = WKWebViewConfiguration()
+        webViewConfiguration.defaultWebpagePreferences.allowsContentJavaScript = true
+        webViewConfiguration.userContentController = userContentController
 
-        let webView = WKWebView(frame: .zero, configuration: configuration)
+        let webView = WKWebView(
+            frame: .zero,
+            configuration: webViewConfiguration
+        )
         context.coordinator.webView = webView
         webView.navigationDelegate = context.coordinator
         webView.uiDelegate = context.coordinator
@@ -48,7 +50,7 @@ struct WaterWebViewRepresentable: UIViewRepresentable {
 
     static func dismantleUIView(_ webView: WKWebView, coordinator: Coordinator) {
         webView.configuration.userContentController.removeScriptMessageHandler(
-            forName: bridgeChannel
+            forName: coordinator.channel
         )
         webView.navigationDelegate = nil
         webView.uiDelegate = nil
@@ -57,11 +59,17 @@ struct WaterWebViewRepresentable: UIViewRepresentable {
 
     final class Coordinator: NSObject, WKNavigationDelegate, WKUIDelegate, WKScriptMessageHandlerWithReply {
         var parent: WaterWebViewRepresentable
+        let channel: String
+        private let router: WaterBridgeRouter
         weak var webView: WKWebView?
         private var loadStartedAt: Date?
 
         init(_ parent: WaterWebViewRepresentable) {
             self.parent = parent
+            self.channel = parent.bridgeConfiguration.channel
+            self.router = WaterBridgeRouter(
+                configuration: parent.bridgeConfiguration
+            )
         }
 
         func userContentController(
@@ -69,7 +77,7 @@ struct WaterWebViewRepresentable: UIViewRepresentable {
             didReceive message: WKScriptMessage,
             replyHandler: @escaping @MainActor (Any?, String?) -> Void
         ) {
-            guard message.name == WaterWebViewRepresentable.bridgeChannel,
+            guard message.name == channel,
                   message.frameInfo.isMainFrame else {
                 WaterBridgeLogger.rejected(
                     reason: "허용되지 않은 채널 또는 프레임입니다.",
@@ -102,7 +110,7 @@ struct WaterWebViewRepresentable: UIViewRepresentable {
             }
 
             let bridgeMessage = WaterBridgeMessage(
-                channel: bridgeChannel,
+                channel: channel,
                 body: url.absoluteString,
                 sourceURL: webView.url
             )
@@ -126,7 +134,7 @@ struct WaterWebViewRepresentable: UIViewRepresentable {
                 return
             }
 
-            let response = WaterBridgeRouter.response(for: bridgeMessage)
+            let response = router.response(for: bridgeMessage)
             WaterBridgeLogger.responded(api: api, response: response)
 
             if let callback = bridgeMessage.callback,

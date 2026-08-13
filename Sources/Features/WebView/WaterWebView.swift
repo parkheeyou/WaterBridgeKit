@@ -21,6 +21,7 @@ import WaterBridgeCore
 /// ```
 public struct WaterWebView: View {
     private let url: URL
+    private let configuration: WaterBridgeConfiguration
     private let onBridgeMessage: WaterBridgeMessageHandler
 
     @State private var isLoading = true
@@ -28,9 +29,11 @@ public struct WaterWebView: View {
 
     public init(
         url: URL,
+        configuration: WaterBridgeConfiguration = .init(),
         onBridgeMessage: @escaping WaterBridgeMessageHandler = { _ in }
     ) {
         self.url = url
+        self.configuration = configuration
         self.onBridgeMessage = onBridgeMessage
     }
 
@@ -38,6 +41,7 @@ public struct WaterWebView: View {
         ZStack {
             WaterWebViewRepresentable(
                 url: url,
+                bridgeConfiguration: configuration,
                 isLoading: $isLoading,
                 errorMessage: $errorMessage,
                 onBridgeMessage: onBridgeMessage
