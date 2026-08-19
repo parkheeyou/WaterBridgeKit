@@ -8,6 +8,20 @@ package enum WaterBridgeLogger {
         category: "WaterBridge"
     )
 
+    package static func crashReporterEnabled() {
+        logger.info("[CRASH][ENABLED]")
+    }
+
+    package static func crashReporterSkippedForDebugger() {
+        logger.info("[CRASH][SKIPPED] debugger is attached")
+    }
+
+    package static func crashReportRecovered(url: URL) {
+        logger.error(
+            "[CRASH][RECOVERED] log=\(url.path, privacy: .public)"
+        )
+    }
+
     package static func webViewLoadRequested(url: URL) {
         logger.info(
             "[WEBVIEW][REQUESTED] url=\(url.absoluteString, privacy: .public)"
