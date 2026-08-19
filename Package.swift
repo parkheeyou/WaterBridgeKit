@@ -18,6 +18,10 @@ let package = Package(
         .package(
             url: "https://github.com/pointfreeco/swift-composable-architecture",
             from: "1.25.5"
+        ),
+        .package(
+            url: "https://github.com/microsoft/plcrashreporter.git",
+            from: "1.12.2"
         )
     ],
     targets: [
@@ -32,6 +36,10 @@ let package = Package(
                 .product(
                     name: "ComposableArchitecture",
                     package: "swift-composable-architecture"
+                ),
+                .product(
+                    name: "CrashReporter",
+                    package: "plcrashreporter"
                 )
             ],
             path: "Sources/Features"

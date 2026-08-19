@@ -99,3 +99,58 @@ window.webkit.messageHandlers.BCUBridge.postMessage(message);
 
 추가 Route는 `water://routeApiList` 결과에도 자동으로 포함됩니다.
 기본 Route와 동일한 API를 추가하면 앱에서 등록한 Route가 우선합니다.
+
+## Crash reports
+
+앱 진입점에서 크래시 수집기를 한 번 활성화합니다.
+
+```swift
+import SwiftUI
+import WaterBridgeKit
+
+@main
+struct MyApp: App {
+    init() {
+        do {
+            let result = try WaterCrashReporter.shared.start()
+            if let reportURL = result.recoveredReportURL {
+                print("Recovered crash report:", reportURL.path)
+            }
+        } catch {
+            print("Crash reporter failed:", error)
+        }
+    }
+
+    var body: some Scene {
+        WindowGroup {
+            ContentView()
+        }
+    }
+}
+```
+
+크래시가 발생한 순간에는 PLCrashReporter가 안전한 원본 보고서를 기록합니다.
+다음 앱 실행에서 `start()`가 이를 사람이 읽을 수 있는 `.crash.log` 파일로
+변환해 Application Support의 `WaterBridgeKit/CrashReports`에 저장합니다.
+
+```swift
+let urls = try WaterCrashReporter.shared.reportURLs()
+let latestURL = try WaterCrashReporter.shared.latestReportURL()
+let latestText = try WaterCrashReporter.shared.latestReportText()
+try WaterCrashReporter.shared.removeAllReports()
+```
+
+기본적으로 최근 10개를 보관합니다. 저장 경로와 보관 개수는 변경할 수 있습니다.
+
+```swift
+try WaterCrashReporter.shared.start(
+    configuration: .init(
+        directoryURL: customDirectoryURL,
+        maximumReportCount: 20
+    )
+)
+```
+
+디버거 연결 중에는 디버깅 세션과의 충돌을 피하기 위해 수집기를 활성화하지
+않습니다. 실제 수집 동작은 Xcode에서 앱을 실행한 뒤 디버거 연결을 해제하거나
+릴리스 빌드에서 확인해야 합니다.
