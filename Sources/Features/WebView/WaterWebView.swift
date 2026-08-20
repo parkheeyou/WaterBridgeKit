@@ -64,6 +64,7 @@ public struct WaterWebView: View {
                 .background(.background)
             }
         }
+        .waterDebugConsole(isEnabled: configuration.showsDebugConsole)
     }
 }
 #endif

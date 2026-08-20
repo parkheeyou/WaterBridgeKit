@@ -7,13 +7,16 @@ public struct WaterBridgeConfiguration {
 
     public let channel: String
     public let additionalRoutes: [WaterBridgeRoute]
+    public let showsDebugConsole: Bool
 
     public init(
         channel: String = Self.defaultChannel,
-        additionalRoutes: [WaterBridgeRoute] = []
+        additionalRoutes: [WaterBridgeRoute] = [],
+        showsDebugConsole: Bool = true
     ) {
         let channel = channel.trimmingCharacters(in: .whitespacesAndNewlines)
         self.channel = channel.isEmpty ? Self.defaultChannel : channel
         self.additionalRoutes = additionalRoutes
+        self.showsDebugConsole = showsDebugConsole
     }
 }
