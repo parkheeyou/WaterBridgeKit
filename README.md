@@ -1,7 +1,9 @@
 # WaterBridgeKit
 
-`WaterBridgeKit`은 SwiftUI의 `WKWebView`와 웹 애플리케이션 사이의
-`water://` JavaScript 브릿지 통신을 제공하는 Swift Package입니다.
+`WaterBridgeKit` 의 주요 기능
+- `WaterWebView` + 기본 브릿지 처리(`water://~`)
+- 크래쉬 발생시 `.log` 파일로 확인 가능
+- 로그 콘솔 뷰 제공(앱에서 바로 로그 확인 가능)
 
 ## Requirements
 
@@ -99,6 +101,66 @@ window.webkit.messageHandlers.BCUBridge.postMessage(message);
 
 추가 Route는 `water://routeApiList` 결과에도 자동으로 포함됩니다.
 기본 Route와 동일한 API를 추가하면 앱에서 등록한 Route가 우선합니다.
+
+## In-app debug console
+
+`WaterWebView`는 DEBUG 빌드에서 우측 하단에 `로그` 버튼을 자동으로 표시합니다.
+버튼을 누르면 Xcode를 연결하지 않아도 현재 실행 중 발생한 로그를 앱 안에서
+확인할 수 있습니다.
+
+콘솔에서는 다음 로그를 카테고리별로 확인할 수 있습니다.
+
+- `WEBVIEW`: 웹뷰 요청, 로딩 시작·완료 및 오류
+- `BRIDGE`: 웹 브릿지 수신, 응답, 콜백 및 거절
+- `CRASH`: 크래시 리포터 상태
+- `EVENT`: 앱에서 직접 기록한 사용자 이벤트
+- `API`: 앱에서 직접 기록한 API 요청과 응답
+- `CUSTOM`: 그 밖의 앱 로그
+
+콘솔은 최신 로그를 위에 표시하며 전체 로그 복사와 초기화를 지원합니다.
+로그는 메모리에 최대 1,000개까지 저장되고 Release 빌드에서는 버튼 표시와
+로그 수집이 모두 비활성화됩니다.
+
+필요하면 특정 `WaterWebView`에서 콘솔 버튼을 끌 수 있습니다.
+
+```swift
+let configuration = WaterBridgeConfiguration(
+    showsDebugConsole: false
+)
+
+WaterWebView(
+    url: URL(string: "https://example.com")!,
+    configuration: configuration
+)
+```
+
+웹뷰가 아닌 일반 SwiftUI 화면에서도 같은 콘솔을 사용할 수 있습니다.
+
+```swift
+struct SettingsView: View {
+    var body: some View {
+        SettingsContent()
+            .waterDebugConsole()
+    }
+}
+```
+
+앱 고유 이벤트와 API 통신은 `WaterDebugLogger`로 기록합니다.
+
+```swift
+WaterDebugLogger.event("로그인 버튼 선택")
+WaterDebugLogger.api("POST /login request started")
+WaterDebugLogger.api("POST /login -> 200")
+
+WaterDebugLogger.log(
+    "응답 디코딩 실패",
+    category: .api,
+    level: .error
+)
+```
+
+API 요청·응답을 기록할 때에는 인증 토큰, 개인정보 등 민감한 값을 제거하거나
+마스킹한 문자열을 전달해야 합니다.
 
 ## Crash reports
 
