@@ -4,6 +4,7 @@
 - `WaterWebView` + 기본 브릿지 처리(`water://~`)
 - 크래쉬 발생시 `.log` 파일로 확인 가능
 - 로그 콘솔 뷰 제공(앱에서 바로 로그 확인 가능)
+- URLSession 기반 타입 안전 API 통신 모듈
 
 ## Requirements
 
@@ -101,6 +102,142 @@ window.webkit.messageHandlers.BCUBridge.postMessage(message);
 
 추가 Route는 `water://routeApiList` 결과에도 자동으로 포함됩니다.
 기본 Route와 동일한 API를 추가하면 앱에서 등록한 Route가 우선합니다.
+
+## Network
+
+네트워크 모듈은 외부 라이브러리 없이 `URLSession`과 async/await를 사용합니다.
+API 목록은 `WaterAPIEndpoint`를 채택한 enum으로 별도 관리합니다.
+
+```swift
+enum AppAPI: WaterAPIEndpoint {
+    case users
+    case user(id: Int)
+    case login
+
+    var path: String {
+        switch self {
+        case .users:
+            "/users"
+        case let .user(id):
+            "/users/\(id)"
+        case .login:
+            "/login"
+        }
+    }
+
+    var method: WaterHTTPMethod {
+        switch self {
+        case .users, .user:
+            .get
+        case .login:
+            .post
+        }
+    }
+}
+```
+
+기본 URL과 공통 헤더를 설정해 클라이언트를 생성합니다.
+
+```swift
+let apiClient = WaterNetworkClient<AppAPI>(
+    configuration: WaterNetworkConfiguration(
+        baseURL: URL(string: "https://api.example.com/v1")!,
+        headers: [
+            "Accept": "application/json"
+        ],
+        headerProvider: {
+            // 요청 시점마다 최신 인증 값을 반환할 수 있습니다.
+            ["Authorization": "Bearer ACCESS_TOKEN"]
+        }
+    )
+)
+```
+
+요청과 응답 모델은 `Sendable`을 함께 채택합니다.
+
+```swift
+struct LoginRequest: Encodable, Sendable {
+    let email: String
+    let password: String
+}
+
+struct LoginResponse: Decodable, Sendable {
+    let accessToken: String
+}
+
+let result = await apiClient.request(
+    .login,
+    request: .json(
+        LoginRequest(
+            email: "water@example.com",
+            password: "password"
+        )
+    ),
+    response: LoginResponse.self
+)
+
+switch result {
+case let .success(response):
+    print(response.accessToken)
+case let .failure(error):
+    print(error.localizedDescription)
+}
+```
+
+query 모델도 직접 전달할 수 있습니다.
+
+```swift
+struct UserQuery: Encodable, Sendable {
+    let page: Int
+    let keyword: String
+}
+
+struct User: Decodable, Sendable {
+    let id: Int
+    let name: String
+}
+
+let result = await apiClient.request(
+    .users,
+    request: .queryEncodable(
+        UserQuery(page: 1, keyword: "water")
+    ),
+    response: [User].self
+)
+```
+
+서버의 실패 응답도 별도 모델로 디코딩하려면 `errorResponse`를 지정합니다.
+
+```swift
+struct APIErrorResponse: Decodable, Sendable {
+    let code: String
+    let message: String
+}
+
+let result = await apiClient.request(
+    .login,
+    request: .json(loginRequest),
+    response: LoginResponse.self,
+    errorResponse: APIErrorResponse.self
+)
+
+switch result {
+case let .success(response, httpResponse):
+    print(response, httpResponse.statusCode)
+case let .failure(failure):
+    print(failure.error)
+    print(failure.body?.message ?? "서버 오류")
+}
+```
+
+`.plain`, `.query`, `.queryEncodable`, `.json`, `.form`, `.raw` 요청을 지원합니다.
+completion 방식도 동일한 `request` 함수로 사용할 수 있으며 반환되는 `Task`를
+취소하면 URLSession 요청도 함께 취소됩니다.
+
+API 요청과 응답의 메서드, 경로, 상태 코드, 소요 시간은 DEBUG 로그 콘솔의
+`API` 카테고리에 자동 기록됩니다. 요청·응답 본문 로그는 민감 정보 노출을
+방지하기 위해 기본적으로 꺼져 있습니다. 필요한 개발 환경에서만
+`isBodyLoggingEnabled: true`로 활성화해야 합니다.
 
 ## In-app debug console
 
