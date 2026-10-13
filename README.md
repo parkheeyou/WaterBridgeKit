@@ -353,3 +353,50 @@ try WaterCrashReporter.shared.start(
 디버거 연결 중에는 디버깅 세션과의 충돌을 피하기 위해 수집기를 활성화하지
 않습니다. 실제 수집 동작은 Xcode에서 앱을 실행한 뒤 디버거 연결을 해제하거나
 릴리스 빌드에서 확인해야 합니다.
+
+## iOS 권한 확인 및 요청
+
+`WaterPermissionManager`는 카메라(`camera`), 마이크(`microphone`), 앱 사용 중 위치(`location`), 사진 라이브러리 읽기·쓰기(`photos`)를 지원합니다. iOS 전용 기능입니다.
+
+```swift
+import SwiftUI
+import WaterBridgeKit
+
+struct PermissionExampleView: View {
+    @StateObject private var permissions = WaterPermissionManager()
+
+    var body: some View {
+        VStack {
+            Button("카메라 사용") {
+                Task {
+                    if await permissions.ensurePermission(.camera) {
+                        // 카메라 화면 표시
+                    }
+                }
+            }
+            Text(permissions.statuses[.camera]?.title ?? "확인 중")
+        }
+        .waterPermissionAlerts(using: permissions)
+    }
+}
+```
+
+- `status(for:)`: 시스템 창 없이 상태 조회. `refresh()`는 지원 권한 전체를 갱신합니다.
+- `request(_:)`: 미결정 상태에서만 시스템 창을 표시하고 결과를 반환합니다. 별도 UI에서 직접 처리할 때 사용합니다. 설정 안내를 자동 표시하지 않습니다.
+- `ensurePermission(_:)`: 시스템 요청 후 허용 여부를 반환하고, 미허용 시 앱 안내를 준비합니다. 같은 인스턴스를 `.waterPermissionAlerts(using:)`에 연결해야 안내가 보입니다.
+- 이미 거부한 권한은 시스템 창을 다시 띄울 수 없으므로 앱 설정 이동을 안내합니다. 사용자가 취소하면 기능 진행을 중단합니다.
+- `restricted`는 스크린 타임·관리 정책 안내만 표시합니다. 위치 서비스 전체가 꺼져 있으면 전역 설정 경로를 안내합니다. 설정 버튼은 공개 API로 앱 설정을 열며, 전역 위치 서비스 설정으로 직접 이동하지 않습니다.
+- 사진의 `limited`는 사용 가능한 권한으로 취급합니다. 선택한 사진만 접근할 수 있으므로 전체 라이브러리 접근을 가정하면 안 됩니다.
+- 설정에서 돌아오면 modifier가 상태를 갱신합니다. 권한이 허용되어도 이전 기능을 자동 실행하지 않으며 다시 버튼을 선택하면 됩니다.
+- 앱이 활성화된 상태에서 요청하세요. 동일 manager의 중복 요청은 막습니다. 여러 화면에서도 하나의 manager를 공유하고 안내 modifier는 표시 중인 화면에 하나만 연결하세요.
+
+사용 앱의 **Info.plist**에 요청할 권한의 사용 목적을 추가해야 합니다. 패키지 자체에 설정해도 사용 앱에는 적용되지 않습니다.
+
+| 권한 | Info.plist 키 |
+| --- | --- |
+| 카메라 | `NSCameraUsageDescription` |
+| 마이크 | `NSMicrophoneUsageDescription` |
+| 앱 사용 중 위치 | `NSLocationWhenInUseUsageDescription` |
+| 사진 읽기·쓰기 | `NSPhotoLibraryUsageDescription` |
+
+미결정 상태에서 사용 목적이 없거나 비어 있으면 시스템 요청 전에 오류를 반환하여 설정 누락으로 인한 종료를 방지합니다. 백그라운드 위치·알림·블루투스 권한과 웹뷰의 웹 콘텐츠 권한 위임은 이 API에 포함하지 않습니다.
