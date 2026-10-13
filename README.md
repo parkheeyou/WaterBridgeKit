@@ -400,3 +400,71 @@ struct PermissionExampleView: View {
 | 사진 읽기·쓰기 | `NSPhotoLibraryUsageDescription` |
 
 미결정 상태에서 사용 목적이 없거나 비어 있으면 시스템 요청 전에 오류를 반환하여 설정 누락으로 인한 종료를 방지합니다. 백그라운드 위치·알림·블루투스 권한과 웹뷰의 웹 콘텐츠 권한 위임은 이 API에 포함하지 않습니다.
+
+## 앱·웹 쿠키 세션 동기화
+
+`WaterSessionSynchronizer`는 WebKit의 `WKHTTPCookieStore`와 전용 `URLSession` 쿠키 저장소를 연결합니다. 하나의 로그인 서비스에는 하나의 인스턴스를 유지하고, 웹뷰와 앱 API 클라이언트에 **같은 인스턴스**를 연결하세요.
+
+```swift
+import SwiftUI
+import WaterBridgeKit
+
+@MainActor
+final class AppSession {
+    let synchronizer: WaterSessionSynchronizer
+    let apiClient: WaterNetworkClient<AppAPI>
+
+    init() throws {
+        synchronizer = try WaterSessionSynchronizer(
+            allowedDomains: ["example.com"],
+            cookieNames: ["SESSIONID", "XSRF-TOKEN"]
+        )
+        apiClient = WaterNetworkClient<AppAPI>(
+            configuration: .init(baseURL: URL(string: "https://example.com/api")!),
+            transport: synchronizer.makeTransport()
+        )
+    }
+}
+
+// 웹뷰를 만들 때 기존 앱·웹 쿠키 동기화가 완료된 후 첫 URL을 로드합니다.
+WaterWebView(
+    url: URL(string: "https://example.com/login")!,
+    configuration: .init(sessionSynchronizer: appSession.synchronizer)
+)
+```
+
+`AppAPI`는 Network 섹션처럼 `WaterAPIEndpoint`를 채택한 앱의 endpoint enum입니다. `AppSession`은 앱 수준에서 소유하세요. 일반 `URLSession.shared`를 사용하는 기존 클라이언트는 자동으로 연결되지 않습니다.
+
+### 로그인 흐름
+
+- **앱 로그인:** 위 `apiClient`로 로그인 API 호출 → URLSession이 응답의 `Set-Cookie`를 저장 → transport가 웹 저장소에 반영한 뒤 응답 반환 → 같은 세션으로 웹뷰 사용.
+- **웹 로그인:** 서버가 웹뷰에 `Set-Cookie` 전달 → 쿠키 변경 observer가 앱 저장소에 반영 → 다음 앱 API 요청 직전에도 동기화 장벽을 수행.
+- 브릿지로 웹 로그인 완료 알림을 받은 직후에는 `await synchronizer.synchronizeFromWeb()`를 호출한 뒤 로그인 확인 API를 요청할 수 있습니다. JavaScript에서 세션 쿠키 값을 읽거나 네이티브에 직접 전달할 필요가 없습니다.
+- 다른 네트워크 라이브러리로 로그인했다면 그 구현이 저장한 **실제 HTTPCookie**를 `try await synchronizer.setCookiesFromNative(cookies)`로 설치하세요. 요청 전 동기화 및 응답/리다이렉트에서 쿠키 저장은 해당 구현에서 처리해야 합니다.
+- `await synchronizer.start()`로 웹뷰가 없어도 관찰과 초기 동기화를 시작합니다. 웹뷰에 연결하거나 transport를 사용하면 자동 시작합니다. `stopObserving()`는 자동 관찰을 중단하며 다음 start/요청/명시적 동기화에서 다시 시작합니다.
+
+### 공유 범위와 쿠키 속성
+
+`allowedDomains`와 `cookieNames`는 필수이며 서버의 실제 설정에 맞춰 지정합니다. `example.com`은 해당 도메인과 `api.example.com` 같은 하위 도메인의 지정된 이름 쿠키를 허용합니다. `example.com.evil.test` 같은 유사 도메인은 허용하지 않습니다. 쿠키의 원래 Domain/Path/Secure/HttpOnly/만료 속성을 유지하며, 같은 이름이라도 도메인·경로가 다르면 별도 쿠키로 처리합니다.
+
+도메인 허용 목록은 쿠키의 Domain을 확장하는 기능이 아닙니다. 웹의 host-only 쿠키가 `www.example.com`에 설정돼 있으면 `api.example.com`으로 전송할 수 없습니다. 양쪽 호스트에서 같은 쿠키를 쓰려면 서버가 적절한 Domain을 설정하거나 공통 인증 서버로 세션을 교환해야 합니다. 서버가 CSRF 쿠키·헤더를 요구하면 쿠키 이름을 함께 등록하고 요청 헤더도 서버 규약에 맞게 설정하세요. Cookie 헤더는 직접 덮어쓰지 말고 URLSession이 URL에 맞춰 생성하도록 두세요.
+
+HttpOnly 쿠키는 JavaScript로 주입하지 않고 네이티브 저장소 API로 공유합니다. 세션 쿠키 값은 동기화 모듈의 로그에 기록하지 않으며 `cookieCounts()`는 개수만 제공합니다. 개수가 1 이상이어도 인증 성공을 뜻하지 않으므로 서버의 세션 확인 API로 유효성을 판단하세요.
+
+기본 WebKit 저장소는 `.default()`입니다. 네이티브 저장소는 인스턴스 전용 메모리 저장소이며 다음 앱 실행 시 웹 저장소에 남아 있는 범위 내 쿠키를 가져옵니다. 재실행 후 유지 여부는 쿠키 만료 및 WebKit 정책에 따릅니다. 메모리 전용 양쪽 저장소가 필요하면 `websiteDataStore: .nonPersistent()`를 전달하세요. 앱에서 이미 저장한 초기 쿠키를 복원할 때는 `initialCookies:`를 전달할 수 있습니다.
+
+### 충돌과 로그아웃
+
+변경된 쪽의 쿠키를 반영하고 삭제도 전파합니다. 양쪽이 같은 쿠키를 동시에 변경하면 `synchronizeFromWeb()`는 웹을, `synchronizeFromNative()`는 앱을 우선합니다. 초기 동기화의 충돌 정책은 기본 `.preferWeb`이며 `initialConflictPolicy: .preferNative`로 바꿀 수 있습니다. 저장소 간 원자적 트랜잭션은 아니므로 서로 다른 계정으로 앱·웹 로그인을 동시에 실행하지 마세요.
+
+```swift
+// 서버 로그아웃 성공 이후 수행합니다.
+// 진행 중인 웹 로그인/요청도 앱에서 중단하고 로그인 화면으로 전환하세요.
+await appSession.synchronizer.clearSession()
+```
+
+`clearSession()`은 지정한 도메인·이름의 쿠키만 양쪽에서 삭제합니다. 다른 쿠키, 캐시, localStorage는 삭제하지 않습니다. 진행 중인 관리 대상 네이티브 요청을 취소하고 네이티브 저장소를 교체하므로 이전 응답이 새 세션으로 반영되지 않습니다. 이 API 자체는 서버 세션을 폐기하지 않습니다. 서버 로그아웃 호출과 웹의 진행 중인 요청 정리는 앱이 담당합니다.
+
+이 기능은 쿠키 기반입니다. Bearer 토큰·localStorage 토큰·다른 서비스 간 SSO는 별도 인증 연결이 필요하며 현재 기능에 포함하지 않습니다.
+
+관련 API: [Apple WKHTTPCookieStore](https://developer.apple.com/documentation/webkit/wkhttpcookiestore), [URLSessionConfiguration.httpCookieStorage](https://developer.apple.com/documentation/foundation/urlsessionconfiguration/httpcookiestorage).

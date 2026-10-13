@@ -8,15 +8,18 @@ public struct WaterBridgeConfiguration {
     public let channel: String
     public let additionalRoutes: [WaterBridgeRoute]
     public let showsDebugConsole: Bool
+    public let sessionSynchronizer: WaterSessionSynchronizer?
 
     public init(
         channel: String = Self.defaultChannel,
         additionalRoutes: [WaterBridgeRoute] = [],
-        showsDebugConsole: Bool = true
+        showsDebugConsole: Bool = true,
+        sessionSynchronizer: WaterSessionSynchronizer? = nil
     ) {
         let channel = channel.trimmingCharacters(in: .whitespacesAndNewlines)
         self.channel = channel.isEmpty ? Self.defaultChannel : channel
         self.additionalRoutes = additionalRoutes
         self.showsDebugConsole = showsDebugConsole
+        self.sessionSynchronizer = sessionSynchronizer
     }
 }
