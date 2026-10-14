@@ -25,6 +25,9 @@ struct WaterWebViewRepresentable: UIViewRepresentable {
         // userContentController.addUserScript(Self.bridgeBootstrapScript)
 
         let webViewConfiguration = WKWebViewConfiguration()
+        if let synchronizer = bridgeConfiguration.sessionSynchronizer {
+            webViewConfiguration.websiteDataStore = synchronizer.websiteDataStore
+        }
         webViewConfiguration.defaultWebpagePreferences.allowsContentJavaScript = true
         webViewConfiguration.userContentController = userContentController
 
@@ -39,7 +42,15 @@ struct WaterWebViewRepresentable: UIViewRepresentable {
         webView.scrollView.contentInsetAdjustmentBehavior = .automatic
         webView.isInspectable = true
         WaterBridgeLogger.webViewLoadRequested(url: url)
-        webView.load(URLRequest(url: url))
+        if let synchronizer = bridgeConfiguration.sessionSynchronizer {
+            context.coordinator.initialLoadTask = Task { @MainActor [weak webView] in
+                await synchronizer.start()
+                guard !Task.isCancelled, let webView else { return }
+                webView.load(URLRequest(url: url))
+            }
+        } else {
+            webView.load(URLRequest(url: url))
+        }
 
         return webView
     }
@@ -49,6 +60,8 @@ struct WaterWebViewRepresentable: UIViewRepresentable {
     }
 
     static func dismantleUIView(_ webView: WKWebView, coordinator: Coordinator) {
+        coordinator.initialLoadTask?.cancel()
+        webView.stopLoading()
         webView.configuration.userContentController.removeScriptMessageHandler(
             forName: coordinator.channel
         )
@@ -63,6 +76,7 @@ struct WaterWebViewRepresentable: UIViewRepresentable {
         private let router: WaterBridgeRouter
         weak var webView: WKWebView?
         private var loadStartedAt: Date?
+        var initialLoadTask: Task<Void, Never>?
 
         init(_ parent: WaterWebViewRepresentable) {
             self.parent = parent
