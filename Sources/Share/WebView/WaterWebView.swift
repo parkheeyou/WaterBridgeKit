@@ -24,6 +24,7 @@ public struct WaterWebView: View {
     private let configuration: WaterBridgeConfiguration
     private let onBridgeMessage: WaterBridgeMessageHandler
 
+    @StateObject private var webNavigation = WaterBridgeWebNavigation()
     @StateObject private var exitConfirmation = WaterBridgeExitConfirmation()
     @State private var isLoading = true
     @State private var errorMessage: String?
@@ -46,7 +47,8 @@ public struct WaterWebView: View {
                 isLoading: $isLoading,
                 errorMessage: $errorMessage,
                 onBridgeMessage: onBridgeMessage,
-                onExitRequested: { exitConfirmation.request() }
+                onExitRequested: { exitConfirmation.request() },
+                onOpenRequested: { webNavigation.request($0) }
             )
 
             if isLoading {
@@ -65,6 +67,24 @@ public struct WaterWebView: View {
                 .padding()
                 .background(.background)
             }
+        }
+        .overlay {
+            Color.clear
+                .allowsHitTesting(false)
+                .alert("페이지를 열 수 없습니다", isPresented: Binding(
+                    get: { webNavigation.errorMessage != nil },
+                    set: { if !$0 { webNavigation.errorMessage = nil } }
+                )) {
+                    Button("확인", role: .cancel) { webNavigation.errorMessage = nil }
+                } message: {
+                    Text(webNavigation.errorMessage ?? "")
+                }
+        }
+        .sheet(item: $webNavigation.webDestination) { destination in
+            WaterBridgePresentedWebView(
+                url: destination.url, configuration: configuration,
+                onBridgeMessage: onBridgeMessage
+            )
         }
         .waterDebugConsole(isEnabled: configuration.showsDebugConsole)
         .alert("앱을 종료하겠습니까?", isPresented: $exitConfirmation.isPresented) {

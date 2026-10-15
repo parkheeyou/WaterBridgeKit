@@ -8,11 +8,13 @@ struct WaterBridgeRouter {
 
     init(
         configuration: WaterBridgeConfiguration,
-        onExitRequested: @escaping @MainActor () -> Void = {}
+        onExitRequested: @escaping @MainActor () -> Void = {},
+        onOpenRequested: @escaping @MainActor (WaterBridgeWebDestination) -> Bool = { _ in false }
     ) {
         let registry = WaterBridgeRouteRegistry(
             additionalRoutes: configuration.additionalRoutes,
-            onExitRequested: onExitRequested
+            onExitRequested: onExitRequested,
+            onOpenRequested: onOpenRequested
         )
         self.registry = registry
         self.context = WaterBridgeRouteContext(
