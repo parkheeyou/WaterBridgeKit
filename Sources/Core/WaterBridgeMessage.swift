@@ -43,28 +43,42 @@ public struct WaterBridgeMessage {
         data ?? value(for: "payload") ?? value(for: "params")
     }
 
-    /// `water://...` 형식으로 전달된 브릿지 API입니다.
+    /// 쿼리 파라미터를 제외한 브릿지 API 주소입니다.
     public var api: String? {
-        func normalizedAPI(_ value: Any?) -> String? {
+        guard let value = apiValue else { return nil }
+        return value.components(separatedBy: CharacterSet(charactersIn: "?#")).first
+    }
+
+    /// 브릿지 URI의 쿼리입니다. 값은 URLComponents가 한 번만 디코딩합니다.
+    public var queryItems: [URLQueryItem] {
+        guard let value = apiValue else { return [] }
+        return URLComponents(string: value)?.queryItems ?? []
+    }
+
+    private var rawCommand: String? {
+        guard let value = body as? String, value.hasPrefix("water://"),
+              let command = value.components(separatedBy: "?").first,
+              !(command.removingPercentEncoding ?? command).contains("{") else { return nil }
+        return value
+    }
+
+    private var apiValue: String? {
+        func normalized(_ value: Any?) -> String? {
             guard let value = value as? String, !value.isEmpty else { return nil }
             return value.hasPrefix("water://") ? value : "water://\(value)"
         }
-
+        if let rawCommand { return rawCommand }
         if let dictionary {
-            return normalizedAPI(dictionary["api"])
-                ?? normalizedAPI(dictionary["method"])
-                ?? normalizedAPI(dictionary["name"])
-                ?? normalizedAPI(dictionary["action"])
+            return normalized(dictionary["api"]) ?? normalized(dictionary["method"])
+                ?? normalized(dictionary["name"]) ?? normalized(dictionary["action"])
         }
-
-        guard let value = body as? String,
-              !value.contains("{") else {
-            return nil
-        }
-        return normalizedAPI(value)
+        guard let value = body as? String, !value.contains("{") else { return nil }
+        return normalized(value)
     }
 
     private var dictionary: [String: Any]? {
+        // 이동 URL의 JSON 쿼리 등을 브릿지 envelope로 오인하지 않습니다.
+        if rawCommand != nil { return nil }
         if let dictionary = body as? [String: Any] {
             return Self.expandingNestedEnvelope(in: dictionary)
         }
@@ -120,6 +134,10 @@ public struct WaterBridgeMessage {
     private static func expandingNestedEnvelope(
         in dictionary: [String: Any]
     ) -> [String: Any] {
+        if let api = dictionary["api"] as? String, api.hasPrefix("water://"),
+           let command = api.components(separatedBy: "?").first, !(command.removingPercentEncoding ?? command).contains("{") {
+            return dictionary
+        }
         guard let api = dictionary["api"] as? String,
               let nestedDictionary = decodeEnvelope(api) else {
             return dictionary

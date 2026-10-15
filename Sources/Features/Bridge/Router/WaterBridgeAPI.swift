@@ -27,6 +27,8 @@ enum WaterBridgeAPI {
             api: WaterBridgeExitHandler.api,
             version: 1,
             handler: WaterBridgeExitHandler.handle
-        )
+        ),
+        (api: WaterBridgeOpenURLHandler.safariAPI, version: 1, handler: WaterBridgeOpenURLHandler.safari),
+        (api: WaterBridgeOpenURLHandler.webViewAPI, version: 1, handler: WaterBridgeOpenURLHandler.webView)
     ]
 }

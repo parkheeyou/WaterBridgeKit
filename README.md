@@ -57,6 +57,8 @@ window.webkit.messageHandlers.Bridge.postMessage(message);
 - `water://routeApiList` version 2
 - `water://nativeInfo` version 2
 - `water://exit` version 1
+- `water://openSafari` version 1
+- `water://openWebView` version 1
 
 ## Custom channel and routes
 
@@ -486,3 +488,41 @@ const response = await window.webkit.messageHandlers.Bridge.postMessage({
 기존 water 스킴 호출(`location.href = "water://exit"`)도 지원합니다. 응답은 **종료 확인 요청이 접수되었다는 뜻**이며 사용자가 종료에 동의했다는 결과가 아닙니다. 커스텀 채널을 설정했다면 해당 채널 이름을 사용하세요. `routeApiList`에도 자동 포함됩니다. 앱에서 같은 API의 추가 Route를 등록하면 기존 규칙대로 앱 Route가 우선하며 기본 종료 확인 창은 표시하지 않습니다.
 
 iOS에는 정상 종료용 공개 API가 없어 확인 시 `Darwin.exit(EXIT_SUCCESS)`를 호출합니다. Apple은 이 방식이 강제 종료처럼 보이고 `applicationWillTerminate` 등의 종료 콜백이 호출되지 않아 데이터 저장이 생략될 수 있다고 안내합니다. 배포 앱에서 사용할 때는 이 제약을 고려하고 필요한 데이터는 종료 확인 전에 저장하세요. [Apple QA1561](https://developer.apple.com/library/archive/qa/qa1561/_index.html)
+
+
+## 외부 브라우저 및 앱 내부 웹뷰 열기 (iOS)
+
+다음 두 브릿지는 HTTP/HTTPS URL을 받아 이동합니다.
+
+```javascript
+const url = "https://example.com/page?q=one&next=two#detail";
+
+// 외부 브라우저/URL 처리 앱으로 전달
+await window.webkit.messageHandlers.Bridge.postMessage(
+  "water://openSafari?url=" + encodeURIComponent(url)
+);
+
+// 앱 안에 닫기 버튼이 있는 새 웹뷰 화면 표시
+await window.webkit.messageHandlers.Bridge.postMessage(
+  "water://openWebView?url=" + encodeURIComponent(url)
+);
+
+// JSON data.url 형식도 지원 (이 형식에서는 URL을 별도로 인코딩하지 않습니다.)
+await window.webkit.messageHandlers.Bridge.postMessage({
+  api: "water://openWebView",
+  data: {url: "https://example.com/page"}
+});
+
+// water 스킴 이동 방식도 동일합니다. 이 방식에는 Promise 응답이 없습니다.
+// location.href = "water://openWebView?url=" + encodeURIComponent(url);
+```
+
+URI의 `url` 값에는 전체 목적 URL을 `encodeURIComponent`로 한 번 인코딩하세요. 라이브러리는 쿼리를 한 번만 디코딩하므로 대상 URL의 기존 퍼센트 인코딩·쿼리·fragment가 보존됩니다. JSON의 기존 `payload.url` 및 `params.url`도 지원합니다. URL 누락, 중복 url 쿼리, 서로 다른 data/query URL, 사용자 정보가 포함된 주소, 상대 주소, HTTP/HTTPS 이외의 스킴은 실패 응답(`9999`)으로 거절합니다.
+
+성공 응답은 `status.code: "0000"`, `data: {requested: true, target: "safari" | "webView"}`이며 **열기 요청 접수**를 뜻합니다. 외부 앱 실행이나 웹페이지 로딩 완료를 보장하지 않습니다. 외부 열기 실패 및 웹 로딩 오류는 앱 화면에서 안내합니다.
+
+`openSafari`는 Safari를 강제 지정하지 않고 `UIApplication.open`으로 iOS의 기본 브라우저/연결된 URL 처리 앱에 전달합니다. Universal Link 설정에 따라 연결된 앱이 열릴 수도 있습니다. 외부 브라우저의 로그인 쿠키는 앱의 WebKit 저장소와 공유하지 않습니다.
+
+`openWebView`는 현재 화면 위에 모달 웹뷰를 표시합니다. 닫으면 기존 페이지로 돌아오며, 새 웹뷰에도 기존 채널·추가 Route·디버그 콘솔·세션 동기화 설정을 전달합니다. 이미 웹뷰를 표시하거나 외부 열기를 처리 중이면 같은 화면의 추가 요청은 실패 응답으로 처리합니다. 앱 전용 추가 Route로 같은 API를 등록하면 기본 동작 대신 해당 Route가 실행됩니다.
+
+[Apple UIApplication.open](https://developer.apple.com/documentation/uikit/uiapplication/open(_:options:completionhandler:))

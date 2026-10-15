@@ -40,6 +40,29 @@ final class WaterBridgeMessageTests: XCTestCase {
         )
     }
 
+    func testJSONInsideDestinationQueryIsNotAnEnvelope() throws {
+        let target = "https://example.com/?config={\"api\":\"water://exit\"}"
+        var components = URLComponents(string: "water://openWebView")!
+        components.queryItems = [URLQueryItem(name: "url", value: target)]
+        for body in [components.string! as Any, ["api": components.string!] as Any] {
+            let message = makeMessage(body: body)
+            XCTAssertEqual(message.api, "water://openWebView")
+            XCTAssertEqual(message.queryItems.first?.value, target)
+            XCTAssertNil(message.callback)
+        }
+    }
+
+    func testEncodedJSONEnvelopeWithWaterPrefixStillParses() throws {
+        let json = String(envelope.dropFirst("water://".count))
+        let encoded = try XCTUnwrap(json.addingPercentEncoding(withAllowedCharacters: .alphanumerics))
+        let command = "water://" + encoded
+        for body in [command as Any, ["api": command] as Any] {
+            let message = makeMessage(body: body)
+            XCTAssertEqual(message.api, "water://routeApiList")
+            XCTAssertNotNil(message.callback)
+        }
+    }
+
     private func makeMessage(body: Any) -> WaterBridgeMessage {
         WaterBridgeMessage(
             channel: "Bridge",

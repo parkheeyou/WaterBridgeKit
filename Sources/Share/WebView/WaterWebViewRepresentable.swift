@@ -11,6 +11,7 @@ struct WaterWebViewRepresentable: UIViewRepresentable {
     @Binding var errorMessage: String?
     let onBridgeMessage: WaterBridgeMessageHandler
     let onExitRequested: @MainActor () -> Void
+    let onOpenRequested: @MainActor (WaterBridgeWebDestination) -> Bool
 
     func makeCoordinator() -> Coordinator {
         Coordinator(self)
@@ -84,7 +85,8 @@ struct WaterWebViewRepresentable: UIViewRepresentable {
             self.channel = parent.bridgeConfiguration.channel
             self.router = WaterBridgeRouter(
                 configuration: parent.bridgeConfiguration,
-                onExitRequested: parent.onExitRequested
+                onExitRequested: parent.onExitRequested,
+                onOpenRequested: parent.onOpenRequested
             )
         }
 
@@ -125,6 +127,11 @@ struct WaterWebViewRepresentable: UIViewRepresentable {
                 return
             }
 
+            guard navigationAction.sourceFrame.isMainFrame else {
+                WaterBridgeLogger.rejected(reason: "메인 프레임에서만 브릿지를 호출할 수 있습니다.", body: url.absoluteString)
+                decisionHandler(.cancel)
+                return
+            }
             let bridgeMessage = WaterBridgeMessage(
                 channel: channel,
                 body: url.absoluteString,
