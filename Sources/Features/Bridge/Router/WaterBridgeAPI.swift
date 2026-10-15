@@ -22,6 +22,11 @@ enum WaterBridgeAPI {
             api: "water://nativeInfo",
             version: 2,
             handler: WaterBridgeNativeInfoHandler.handle
+        ),
+        (
+            api: WaterBridgeExitHandler.api,
+            version: 1,
+            handler: WaterBridgeExitHandler.handle
         )
     ]
 }

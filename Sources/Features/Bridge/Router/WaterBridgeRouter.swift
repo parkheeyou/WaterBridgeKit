@@ -6,9 +6,13 @@ struct WaterBridgeRouter {
     private let registry: WaterBridgeRouteRegistry
     private let context: WaterBridgeRouteContext
 
-    init(configuration: WaterBridgeConfiguration) {
+    init(
+        configuration: WaterBridgeConfiguration,
+        onExitRequested: @escaping @MainActor () -> Void = {}
+    ) {
         let registry = WaterBridgeRouteRegistry(
-            additionalRoutes: configuration.additionalRoutes
+            additionalRoutes: configuration.additionalRoutes,
+            onExitRequested: onExitRequested
         )
         self.registry = registry
         self.context = WaterBridgeRouteContext(

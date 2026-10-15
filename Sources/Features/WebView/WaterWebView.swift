@@ -24,6 +24,7 @@ public struct WaterWebView: View {
     private let configuration: WaterBridgeConfiguration
     private let onBridgeMessage: WaterBridgeMessageHandler
 
+    @StateObject private var exitConfirmation = WaterBridgeExitConfirmation()
     @State private var isLoading = true
     @State private var errorMessage: String?
 
@@ -44,7 +45,8 @@ public struct WaterWebView: View {
                 bridgeConfiguration: configuration,
                 isLoading: $isLoading,
                 errorMessage: $errorMessage,
-                onBridgeMessage: onBridgeMessage
+                onBridgeMessage: onBridgeMessage,
+                onExitRequested: { exitConfirmation.request() }
             )
 
             if isLoading {
@@ -65,6 +67,10 @@ public struct WaterWebView: View {
             }
         }
         .waterDebugConsole(isEnabled: configuration.showsDebugConsole)
+        .alert("앱을 종료하겠습니까?", isPresented: $exitConfirmation.isPresented) {
+            Button("취소", role: .cancel) { exitConfirmation.cancel() }
+            Button("종료", role: .destructive) { exitConfirmation.confirm() }
+        }
     }
 }
 #endif

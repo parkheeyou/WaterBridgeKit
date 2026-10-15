@@ -5,12 +5,20 @@ import WaterBridgeCore
 struct WaterBridgeRouteRegistry {
     let routes: [WaterBridgeRoute]
 
-    init(additionalRoutes: [WaterBridgeRoute] = []) {
+    init(
+        additionalRoutes: [WaterBridgeRoute] = [],
+        onExitRequested: @escaping @MainActor () -> Void = {}
+    ) {
         let defaultRoutes = WaterBridgeAPI.all.map { definition in
             WaterBridgeRoute(
                 api: definition.api,
                 version: definition.version,
-                handler: definition.handler
+                handler: { message, context in
+                    if definition.api == WaterBridgeExitHandler.api {
+                        onExitRequested()
+                    }
+                    return definition.handler(message, context)
+                }
             )
         }
         routes = Self.merging(

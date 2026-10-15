@@ -10,6 +10,7 @@ struct WaterWebViewRepresentable: UIViewRepresentable {
     @Binding var isLoading: Bool
     @Binding var errorMessage: String?
     let onBridgeMessage: WaterBridgeMessageHandler
+    let onExitRequested: @MainActor () -> Void
 
     func makeCoordinator() -> Coordinator {
         Coordinator(self)
@@ -82,7 +83,8 @@ struct WaterWebViewRepresentable: UIViewRepresentable {
             self.parent = parent
             self.channel = parent.bridgeConfiguration.channel
             self.router = WaterBridgeRouter(
-                configuration: parent.bridgeConfiguration
+                configuration: parent.bridgeConfiguration,
+                onExitRequested: parent.onExitRequested
             )
         }
 

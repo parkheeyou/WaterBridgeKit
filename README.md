@@ -56,6 +56,7 @@ window.webkit.messageHandlers.Bridge.postMessage(message);
 
 - `water://routeApiList` version 2
 - `water://nativeInfo` version 2
+- `water://exit` version 1
 
 ## Custom channel and routes
 
@@ -468,3 +469,20 @@ await appSession.synchronizer.clearSession()
 이 기능은 쿠키 기반입니다. Bearer 토큰·localStorage 토큰·다른 서비스 간 SSO는 별도 인증 연결이 필요하며 현재 기능에 포함하지 않습니다.
 
 관련 API: [Apple WKHTTPCookieStore](https://developer.apple.com/documentation/webkit/wkhttpcookiestore), [URLSessionConfiguration.httpCookieStorage](https://developer.apple.com/documentation/foundation/urlsessionconfiguration/httpcookiestorage).
+
+
+## 앱 종료 브릿지 (iOS)
+
+`WaterWebView`에서 `water://exit`를 호출하면 **앱을 종료하겠습니까?** 확인 창이 표시됩니다. **취소**는 앱을 유지하고, **종료**를 선택한 경우에만 프로세스를 종료합니다. 표시 중인 확인 창이 있으면 중복 요청으로 창을 추가하지 않습니다.
+
+```javascript
+const response = await window.webkit.messageHandlers.Bridge.postMessage({
+  api: "water://exit"
+});
+// response.status.code === "0000"
+// response.data.confirmationRequired === true
+```
+
+기존 water 스킴 호출(`location.href = "water://exit"`)도 지원합니다. 응답은 **종료 확인 요청이 접수되었다는 뜻**이며 사용자가 종료에 동의했다는 결과가 아닙니다. 커스텀 채널을 설정했다면 해당 채널 이름을 사용하세요. `routeApiList`에도 자동 포함됩니다. 앱에서 같은 API의 추가 Route를 등록하면 기존 규칙대로 앱 Route가 우선하며 기본 종료 확인 창은 표시하지 않습니다.
+
+iOS에는 정상 종료용 공개 API가 없어 확인 시 `Darwin.exit(EXIT_SUCCESS)`를 호출합니다. Apple은 이 방식이 강제 종료처럼 보이고 `applicationWillTerminate` 등의 종료 콜백이 호출되지 않아 데이터 저장이 생략될 수 있다고 안내합니다. 배포 앱에서 사용할 때는 이 제약을 고려하고 필요한 데이터는 종료 확인 전에 저장하세요. [Apple QA1561](https://developer.apple.com/library/archive/qa/qa1561/_index.html)
