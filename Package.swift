@@ -42,8 +42,8 @@ let package = Package(
                     package: "plcrashreporter"
                 )
             ],
-            path: "Sources",
-            exclude: ["Core"]
+            path: "Sources/Features"
+            // exclude: ["Core"]
         ),
         .testTarget(
             name: "WaterBridgeCoreTests",
