@@ -8,13 +8,17 @@ struct WaterBridgeRouteRegistry {
     init(
         additionalRoutes: [WaterBridgeRoute] = [],
         onExitRequested: @escaping @MainActor () -> Void = {},
-        onOpenRequested: @escaping @MainActor (WaterBridgeWebDestination) -> Bool = { _ in false }
+        onOpenRequested: @escaping @MainActor (WaterBridgeWebDestination) -> Bool = { _ in false },
+        onAlertRequested: @escaping @MainActor (String) -> Bool = { _ in false }
     ) {
         let defaultRoutes = WaterBridgeAPI.all.map { definition in
             WaterBridgeRoute(
                 api: definition.api,
                 version: definition.version,
                 handler: { message, context in
+                    if definition.api == WaterBridgeAlertHandler.api {
+                        return WaterBridgeAlertHandler.handle(message, present: onAlertRequested)
+                    }
                     if definition.api == WaterBridgeOpenURLHandler.safariAPI {
                         return WaterBridgeOpenURLHandler.handle(message, target: .safari, open: onOpenRequested)
                     }

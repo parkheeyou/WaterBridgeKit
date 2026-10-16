@@ -57,6 +57,7 @@ window.webkit.messageHandlers.Bridge.postMessage(message);
 - `water://routeApiList` version 2
 - `water://nativeInfo` version 2
 - `water://exit` version 1
+- `water://alert` version 1
 - `water://openSafari` version 1
 - `water://openWebView` version 1
 
@@ -526,3 +527,26 @@ URI의 `url` 값에는 전체 목적 URL을 `encodeURIComponent`로 한 번 인�
 `openWebView`는 현재 화면 위에 모달 웹뷰를 표시합니다. 닫으면 기존 페이지로 돌아오며, 새 웹뷰에도 기존 채널·추가 Route·디버그 콘솔·세션 동기화 설정을 전달합니다. 이미 웹뷰를 표시하거나 외부 열기를 처리 중이면 같은 화면의 추가 요청은 실패 응답으로 처리합니다. 앱 전용 추가 Route로 같은 API를 등록하면 기본 동작 대신 해당 Route가 실행됩니다.
 
 [Apple UIApplication.open](https://developer.apple.com/documentation/uikit/uiapplication/open(_:options:completionhandler:))
+
+
+## 메시지 알림 브릿지 (iOS)
+
+`water://alert`에 `message`를 전달하면 `WaterWebView`가 제목 **알림**, 전달받은 메시지 본문, **확인** 버튼으로 구성된 네이티브 알림을 표시합니다. 메시지는 HTML이 아닌 일반 텍스트로 표시합니다.
+
+```javascript
+await window.webkit.messageHandlers.Bridge.postMessage({
+  api: "water://alert",
+  data: {message: "처리가 완료되었습니다."}
+});
+
+// URI 방식: message 값을 한 번 인코딩합니다.
+const message = "처리가 완료되었습니다. 다시 확인해 주세요.";
+await window.webkit.messageHandlers.Bridge.postMessage(
+  "water://alert?message=" + encodeURIComponent(message)
+);
+// location.href = "water://alert?message=" + encodeURIComponent(message);
+```
+
+기존 `payload.message` 및 `params.message`도 지원합니다. 커스텀 채널을 설정했다면 해당 채널 이름을 사용하세요. 메시지 누락·빈 문자열·문자열이 아닌 값·중복 쿼리·서로 다른 data/query 메시지는 `9999` 실패 응답을 반환합니다.
+
+성공 응답은 `status.code: "0000"`, `data: {requested: true}`로 **알림 표시 요청 접수**를 뜻하며 사용자가 확인 버튼을 누른 결과는 아닙니다. 이미 메시지 알림이 표시 중이면 기존 메시지를 유지하고 새 요청은 실패 응답을 반환합니다. 확인 후에는 다음 요청을 받을 수 있습니다. `routeApiList`에도 자동 포함되며 앱 전용 Route로 `water://alert`를 등록하면 기본 알림 대신 앱 Route가 실행됩니다.

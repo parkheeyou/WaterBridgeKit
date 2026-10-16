@@ -24,6 +24,7 @@ public struct WaterWebView: View {
     private let configuration: WaterBridgeConfiguration
     private let onBridgeMessage: WaterBridgeMessageHandler
 
+    @StateObject private var alertPresentation = WaterBridgeAlertPresentation()
     @StateObject private var webNavigation = WaterBridgeWebNavigation()
     @StateObject private var exitConfirmation = WaterBridgeExitConfirmation()
     @State private var isLoading = true
@@ -48,7 +49,13 @@ public struct WaterWebView: View {
                 errorMessage: $errorMessage,
                 onBridgeMessage: onBridgeMessage,
                 onExitRequested: { exitConfirmation.request() },
-                onOpenRequested: { webNavigation.request($0) }
+                onOpenRequested: { webNavigation.request($0) },
+                onAlertRequested: {
+                    guard !exitConfirmation.isPresented,
+                          webNavigation.webDestination == nil,
+                          webNavigation.errorMessage == nil else { return false }
+                    return alertPresentation.present($0)
+                }
             )
 
             if isLoading {
@@ -68,18 +75,6 @@ public struct WaterWebView: View {
                 .background(.background)
             }
         }
-        .overlay {
-            Color.clear
-                .allowsHitTesting(false)
-                .alert("페이지를 열 수 없습니다", isPresented: Binding(
-                    get: { webNavigation.errorMessage != nil },
-                    set: { if !$0 { webNavigation.errorMessage = nil } }
-                )) {
-                    Button("확인", role: .cancel) { webNavigation.errorMessage = nil }
-                } message: {
-                    Text(webNavigation.errorMessage ?? "")
-                }
-        }
         .sheet(item: $webNavigation.webDestination) { destination in
             WaterBridgePresentedWebView(
                 url: destination.url, configuration: configuration,
@@ -87,9 +82,52 @@ public struct WaterWebView: View {
             )
         }
         .waterDebugConsole(isEnabled: configuration.showsDebugConsole)
-        .alert("앱을 종료하겠습니까?", isPresented: $exitConfirmation.isPresented) {
-            Button("취소", role: .cancel) { exitConfirmation.cancel() }
-            Button("종료", role: .destructive) { exitConfirmation.confirm() }
+        .alert(presentedAlert?.title ?? "알림", isPresented: Binding(
+            get: { presentedAlert != nil },
+            set: { if !$0 { dismissPresentedAlert() } }
+        ), presenting: presentedAlert) { alert in
+            switch alert {
+            case .exit:
+                Button("취소", role: .cancel) { exitConfirmation.cancel() }
+                Button("종료", role: .destructive) { exitConfirmation.confirm() }
+            case .message, .error:
+                Button("확인", role: .cancel) {}
+            }
+        } message: { alert in
+            if let message = alert.message { Text(message) }
+        }
+    }
+
+    // 메시지·종료·외부 열기 실패 알림이 하나의 시스템 alert presenter를 공유합니다.
+    private var presentedAlert: PresentedAlert? {
+        if let notice = alertPresentation.notice { return .message(notice.message) }
+        if exitConfirmation.isPresented { return .exit }
+        if let error = webNavigation.errorMessage { return .error(error) }
+        return nil
+    }
+
+    private func dismissPresentedAlert() {
+        if alertPresentation.notice != nil { alertPresentation.notice = nil }
+        else if exitConfirmation.isPresented { exitConfirmation.isPresented = false }
+        else { webNavigation.errorMessage = nil }
+    }
+
+    private enum PresentedAlert {
+        case message(String), exit, error(String)
+
+        var title: String {
+            switch self {
+            case .message: "알림"
+            case .exit: "앱을 종료하겠습니까?"
+            case .error: "페이지를 열 수 없습니다"
+            }
+        }
+
+        var message: String? {
+            switch self {
+            case let .message(text), let .error(text): text
+            case .exit: nil
+            }
         }
     }
 }
