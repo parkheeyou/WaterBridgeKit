@@ -550,3 +550,40 @@ await window.webkit.messageHandlers.Bridge.postMessage(
 기존 `payload.message` 및 `params.message`도 지원합니다. 커스텀 채널을 설정했다면 해당 채널 이름을 사용하세요. 메시지 누락·빈 문자열·문자열이 아닌 값·중복 쿼리·서로 다른 data/query 메시지는 `9999` 실패 응답을 반환합니다.
 
 성공 응답은 `status.code: "0000"`, `data: {requested: true}`로 **알림 표시 요청 접수**를 뜻하며 사용자가 확인 버튼을 누른 결과는 아닙니다. 이미 메시지 알림이 표시 중이면 기존 메시지를 유지하고 새 요청은 실패 응답을 반환합니다. 확인 후에는 다음 요청을 받을 수 있습니다. `routeApiList`에도 자동 포함되며 앱 전용 Route로 `water://alert`를 등록하면 기본 알림 대신 앱 Route가 실행됩니다.
+
+## ViewController 조회 및 전체 닫기 (iOS)
+
+`WaterViewControllerManager`는 `@MainActor`에서 UIKit 화면을 조회하고 정리합니다.
+
+```swift
+// 활성 key window가 하나이면 자동 선택합니다.
+let current = WaterViewControllerManager.currentViewController()
+let top = WaterViewControllerManager.topViewController()
+let root = WaterViewControllerManager.rootViewController()
+
+// ViewController 안에서는 자신의 창을 명시하는 것을 권장합니다.
+if let window = view.window {
+    let top = WaterViewControllerManager.topViewController(in: window)
+    try await WaterViewControllerManager.dismissAll(in: window, animated: true)
+}
+
+// scene을 알고 있는 경우
+if let window = WaterViewControllerManager.activeWindow(in: windowScene) {
+    let current = WaterViewControllerManager.currentViewController(in: window)
+}
+```
+
+- `currentViewController`: 루트에서 선택된 탭과 navigation의 마지막 화면을 따라갑니다. 모달은 제외합니다.
+- `topViewController`: 위 기준에 더해 `presentedViewController`를 따라 모달·알럿까지 포함합니다.
+- `rootViewController`: 컨테이너를 해석하지 않고 해당 창의 루트를 반환합니다.
+- `currentViewController(from:)` / `topViewController(from:)`: 창 대신 시작 ViewController를 직접 전달할 수 있습니다.
+
+Navigation과 Tab, Split View 컨테이너를 지원합니다. Split View는 마지막(detail) 열을 기준으로 조회합니다. 커스텀 컨테이너는 선택된 child를 추측하지 않고 컨테이너 자신을 반환하므로 앱에서 적절한 child를 `from:`에 전달하세요.
+
+`dismissAll`은 **대상 창의 루트를 유지**하고 그 아래의 모든 모달을 닫습니다. 이후 루트에 연결된 표준 UIKit Navigation/Tab/Split 컨테이너의 navigation 스택을 루트로 되돌립니다. 비선택 탭의 navigation도 정리하지만 선택한 탭과 다른 창은 유지합니다. `animated`는 모달 닫기에 적용하고 navigation 스택은 애니메이션 없이 정리합니다. 완료를 `await`한 뒤 다음 화면을 표시하세요. 커스텀 컨테이너와 SwiftUI 내부 navigation 스택은 임의로 변경하지 않습니다.
+
+여러 foreground scene에 key window가 존재하면 자동으로 하나를 고르지 않습니다. 자동 조회는 `nil`, 전체 닫기는 `noTargetWindow` 오류를 반환하므로 `in:`으로 창을 명시하세요. 루트 없음, 화면 전환 진행 중, 같은 창의 중복 닫기도 오류로 반환합니다. 닫기 중 앱이 루트를 교체하면 새 루트를 건드리지 않고 `rootViewControllerChanged`를 반환합니다.
+
+이 기능은 UIKit ViewController용 네이티브 API이며 새 웹 브릿지를 등록하지 않습니다. SwiftUI `NavigationStack`의 `path`, `.sheet`/`.fullScreenCover`의 binding은 앱의 상태 모델에서 별도로 초기화해야 합니다. UIKit에서 SwiftUI가 관리하는 presentation을 직접 닫는 것만으로 SwiftUI 상태까지 초기화된다고 가정하지 마세요.
+
+[Apple 모달 닫기](https://developer.apple.com/documentation/uikit/uiviewcontroller/dismiss(animated:completion:)), [UINavigationController.topViewController](https://developer.apple.com/documentation/uikit/uinavigationcontroller/topviewcontroller)
