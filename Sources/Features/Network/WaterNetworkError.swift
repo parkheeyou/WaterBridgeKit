@@ -4,6 +4,8 @@ import Foundation
 public enum WaterNetworkError: Error, Sendable, Equatable {
     case invalidURL(path: String)
     case requestEncoding(message: String)
+    case file(message: String)
+    case unsupportedTransfer
     case invalidResponse
     case cancelled
     case transport(message: String)
@@ -18,6 +20,10 @@ extension WaterNetworkError: LocalizedError {
             "유효하지 않은 API 주소입니다: \(path)"
         case let .requestEncoding(message):
             "요청 데이터 인코딩에 실패했습니다: \(message)"
+        case let .file(message):
+            "파일 처리에 실패했습니다: \(message)"
+        case .unsupportedTransfer:
+            "이 transport는 파일 전송을 지원하지 않습니다."
         case .invalidResponse:
             "HTTP 응답을 확인할 수 없습니다."
         case .cancelled:

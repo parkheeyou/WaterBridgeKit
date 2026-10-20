@@ -243,6 +243,56 @@ API 요청과 응답의 메서드, 경로, 상태 코드, 소요 시간은 DEBUG
 방지하기 위해 기본적으로 꺼져 있습니다. 필요한 개발 환경에서만
 `isBodyLoggingEnabled: true`로 활성화해야 합니다.
 
+### 파일 업로드 / 다운로드
+
+기존 `WaterNetworkClient`의 baseURL, endpoint 메서드, 공통/동적 인증 헤더를 그대로 사용합니다.
+아래 예시의 `.upload`는 POST 또는 PUT, `.download`는 GET endpoint로 정의하세요.
+
+```swift
+struct UploadResponse: Decodable, Sendable {
+    let id: String
+}
+
+// 원본 파일 body 전송
+let uploaded = await apiClient.upload(
+    .upload,
+    fileURL: localFileURL,
+    contentType: "application/pdf",
+    response: UploadResponse.self
+)
+
+// multipart/form-data: 여러 파일과 일반 필드
+let multipart = await apiClient.upload(
+    .upload,
+    files: [WaterUploadFile(
+        url: localFileURL,
+        name: "attachment",
+        fileName: "report.pdf",
+        mimeType: "application/pdf"
+    )],
+    fields: [WaterQueryItem(name: "description", value: "보고서")],
+    response: UploadResponse.self
+)
+
+// 부모 디렉터리를 미리 생성하고 사용하지 않는 파일 경로를 지정합니다.
+let downloaded = await apiClient.download(
+    .download,
+    request: .query([WaterQueryItem(name: "id", value: "123")]),
+    to: destinationURL
+)
+if case let .success(result) = downloaded {
+    print(result.fileURL, result.statusCode)
+}
+```
+
+- 업로드는 `URLSession.upload(for:fromFile:)`, 다운로드는 `URLSession.download(for:)`를 사용합니다. multipart는 64 KiB 단위로 임시 파일을 만들고 전송 후 정리합니다.
+- 업로드 결과는 기존 JSON/Data/`WaterEmptyResponse` 디코딩을 사용합니다. 다운로드는 허용된 HTTP 상태 코드에서만 파일을 이동하며 기존 파일을 덮어쓰지 않습니다. 성공 결과 파일은 앱이 관리합니다.
+- 다운로드 실패 시 임시 파일을 삭제합니다. HTTP 오류 본문은 최대 64 KiB로 제한됩니다.
+- `synchronizer.makeTransport()`를 주입하면 파일 전송도 요청 전/응답 후 쿠키 동기화를 적용합니다.
+- 호출하는 `Task`를 취소하면 전송을 취소할 수 있습니다. 현재 API는 foreground async 전송이며 진행률, 이어받기, background 전송은 제공하지 않습니다.
+- 사용자 지정 `WaterNetworkTransport`는 `upload(for:fromFile:)`, `download(for:)`를 구현해야 파일 전송을 지원합니다. 기존 data-only 구현은 계속 컴파일되며 파일 전송 시 `.unsupportedTransfer`를 반환합니다.
+- 파일 선택기의 security-scoped URL은 앱에서 접근 권한을 유지한 상태로 전달하거나 앱 내부 경로로 복사한 뒤 전달하세요.
+
 ## In-app debug console
 
 `WaterWebView`는 DEBUG 빌드에서 우측 하단에 `로그` 버튼을 자동으로 표시합니다.

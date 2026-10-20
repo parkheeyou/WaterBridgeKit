@@ -143,14 +143,36 @@ public final class WaterSessionSynchronizer: NSObject, @preconcurrency WKHTTPCoo
     }
 
     fileprivate func data(for request: URLRequest) async throws -> (Data, URLResponse) {
+        try await transfer { try await $0.data(for: request) }
+    }
+
+    fileprivate func upload(for request: URLRequest, fromFile file: URL) async throws -> (Data, URLResponse) {
+        try await transfer { try await $0.upload(for: request, fromFile: file) }
+    }
+
+    fileprivate func download(for request: URLRequest) async throws -> (URL, URLResponse) {
+        // generation 변경 시 transfer가 결과를 버리더라도 임시 파일을 정리합니다.
+        var temporaryFile: URL?
+        do {
+            return try await transfer { session in
+                let result = try await session.download(for: request)
+                temporaryFile = result.0
+                return result
+            }
+        } catch {
+            if let temporaryFile { try? FileManager.default.removeItem(at: temporaryFile) }
+            throw error
+        }
+    }
+
+    private func transfer<Value>(_ operation: (URLSession) async throws -> Value) async throws -> Value {
         try Task.checkCancellation()
         let requestGeneration = generation
         await start()
         guard requestGeneration == generation else { throw CancellationError() }
         try Task.checkCancellation()
-        let session = nativeSession
         do {
-            let response = try await session.data(for: request)
+            let response = try await operation(nativeSession)
             guard requestGeneration == generation else { throw CancellationError() }
             await synchronizeFromNative()
             guard requestGeneration == generation else { throw CancellationError() }
@@ -203,6 +225,14 @@ public struct WaterSessionTransport: WaterNetworkTransport {
 
     @MainActor
     fileprivate init(synchronizer: WaterSessionSynchronizer) { self.synchronizer = synchronizer }
+
+    public func upload(for request: URLRequest, fromFile file: URL) async throws -> (Data, URLResponse) {
+        try await synchronizer.upload(for: request, fromFile: file)
+    }
+
+    public func download(for request: URLRequest) async throws -> (URL, URLResponse) {
+        try await synchronizer.download(for: request)
+    }
 
     public func data(for request: URLRequest) async throws -> (Data, URLResponse) {
         try await synchronizer.data(for: request)
