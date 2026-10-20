@@ -34,7 +34,7 @@ struct WaterWebViewRepresentable: UIViewRepresentable {
         webViewConfiguration.defaultWebpagePreferences.allowsContentJavaScript = true
         webViewConfiguration.userContentController = userContentController
 
-        let webView = WKWebView(
+        let webView = WaterHostedWebView(
             frame: .zero,
             configuration: webViewConfiguration
         )
@@ -63,6 +63,7 @@ struct WaterWebViewRepresentable: UIViewRepresentable {
     }
 
     static func dismantleUIView(_ webView: WKWebView, coordinator: Coordinator) {
+        (webView as? WaterHostedWebView)?.isBridgeActive = false
         coordinator.initialLoadTask?.cancel()
         webView.stopLoading()
         webView.configuration.userContentController.removeScriptMessageHandler(
