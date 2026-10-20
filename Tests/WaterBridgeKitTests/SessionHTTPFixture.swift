@@ -49,6 +49,17 @@ final class SessionHTTPFixture: @unchecked Sendable {
                 else { receive(connection, buffer: buffer) }
                 return
             }
+            // 업로드 body 수신이 끝난 뒤 응답하여 전송 중 연결 종료를 방지합니다.
+            let headerEnd = buffer.range(of: Data("\r\n\r\n".utf8))!.upperBound
+            let headerText = String(decoding: buffer[..<headerEnd], as: UTF8.self)
+            let contentLength = headerText.components(separatedBy: "\r\n")
+                .first(where: { $0.lowercased().hasPrefix("content-length:") })
+                .flatMap { Int($0.dropFirst(15).trimmingCharacters(in: .whitespaces)) } ?? 0
+            if buffer.count - headerEnd < contentLength {
+                if complete || error != nil { connection.cancel() }
+                else { receive(connection, buffer: buffer) }
+                return
+            }
             let request = String(decoding: buffer, as: UTF8.self)
             let path = request.components(separatedBy: "\r\n").first?.components(separatedBy: " ").dropFirst().first ?? "/"
             let cookieHeader = request.components(separatedBy: "\r\n")

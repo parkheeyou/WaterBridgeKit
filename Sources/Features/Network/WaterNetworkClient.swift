@@ -3,8 +3,8 @@ import WaterBridgeCore
 
 /// endpoint 목록을 `URLRequest`로 변환하고 `URLSession` 기반 transport로 전송합니다.
 public final class WaterNetworkClient<API: WaterAPIEndpoint>: @unchecked Sendable {
-    private let configuration: WaterNetworkConfiguration
-    private let transport: any WaterNetworkTransport
+    let configuration: WaterNetworkConfiguration
+    let transport: any WaterNetworkTransport
 
     public init(
         configuration: WaterNetworkConfiguration,
@@ -53,8 +53,15 @@ public final class WaterNetworkClient<API: WaterAPIEndpoint>: @unchecked Sendabl
         errorResponse failureType: Failure.Type
     ) async -> WaterNetworkResult<Response, Failure>
     where Response: Decodable & Sendable, Failure: Decodable & Sendable {
+        await perform(endpoint, requestData: requestData, responseType: responseType, failureType: failureType)
+    }
+
+    func perform<Response: Decodable & Sendable, Failure: Decodable & Sendable>(
+        _ endpoint: API, requestData: WaterAPIRequest, responseType: Response.Type,
+        failureType: Failure.Type, uploadFile: URL? = nil, contentType: String? = nil
+    ) async -> WaterNetworkResult<Response, Failure> {
         let startedAt = Date()
-        let urlRequest: URLRequest
+        var urlRequest: URLRequest
 
         do {
             urlRequest = try WaterURLRequestBuilder.makeRequest(
@@ -73,10 +80,16 @@ public final class WaterNetworkClient<API: WaterAPIEndpoint>: @unchecked Sendabl
             return failure(networkError)
         }
 
+        if let contentType { urlRequest.setValue(contentType, forHTTPHeaderField: "Content-Type") }
         logRequest(endpoint: endpoint, request: urlRequest)
 
         do {
-            let (data, urlResponse) = try await transport.data(for: urlRequest)
+            let (data, urlResponse): (Data, URLResponse)
+            if let uploadFile {
+                (data, urlResponse) = try await transport.upload(for: urlRequest, fromFile: uploadFile)
+            } else {
+                (data, urlResponse) = try await transport.data(for: urlRequest)
+            }
             guard let httpResponse = urlResponse as? HTTPURLResponse else {
                 logFailure(endpoint: endpoint, error: .invalidResponse)
                 return failure(.invalidResponse)
@@ -132,6 +145,9 @@ public final class WaterNetworkClient<API: WaterAPIEndpoint>: @unchecked Sendabl
                     )
                 )
             }
+        } catch let error as WaterNetworkError {
+            logFailure(endpoint: endpoint, error: error)
+            return failure(error)
         } catch is CancellationError {
             logFailure(endpoint: endpoint, error: .cancelled)
             return failure(.cancelled)
