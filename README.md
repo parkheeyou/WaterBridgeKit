@@ -637,3 +637,24 @@ Navigation과 Tab, Split View 컨테이너를 지원합니다. Split View는 마
 이 기능은 UIKit ViewController용 네이티브 API이며 새 웹 브릿지를 등록하지 않습니다. SwiftUI `NavigationStack`의 `path`, `.sheet`/`.fullScreenCover`의 binding은 앱의 상태 모델에서 별도로 초기화해야 합니다. UIKit에서 SwiftUI가 관리하는 presentation을 직접 닫는 것만으로 SwiftUI 상태까지 초기화된다고 가정하지 마세요.
 
 [Apple 모달 닫기](https://developer.apple.com/documentation/uikit/uiviewcontroller/dismiss(animated:completion:)), [UINavigationController.topViewController](https://developer.apple.com/documentation/uikit/uinavigationcontroller/topviewcontroller)
+
+## 파일 경로
+
+```swift
+// 앱 데이터 샌드박스 루트 (Documents, Library, tmp의 부모)
+let root = WaterFilePath.rootFolderPath()
+
+// 앱 전용 Documents/Downloads. 없으면 생성하며 생성 실패 시 throw합니다.
+let downloads = try WaterFilePath.getDownloadPath()
+let destination = URL(fileURLWithPath: downloads, isDirectory: true)
+    .appendingPathComponent("report.pdf")
+// await apiClient.download(.download, to: destination)
+
+// 호스트 앱 번들 리소스의 www 폴더. 없으면 throw합니다.
+let www = try WaterFilePath.getFullResourceWWWRootPath()
+// 다른 리소스 번들이면 bundle: 인자로 지정합니다.
+```
+
+반환값은 `file://` URL 문자열이 아닌 절대 파일 시스템 경로입니다. 다운로드 폴더는 시스템 공용 Downloads와 별개이며, www는 읽기 전용 번들 리소스입니다. Xcode에 www 디렉터리 구조가 유지되도록 리소스로 포함해야 합니다. `Resources/www`처럼 리소스를 평탄화하여 파일만 복사하면 www 폴더를 찾을 수 없습니다. 빌드된 앱 번들에 실제 `www/` 디렉터리가 있는지 확인하세요.
+
+앱 컨테이너 경로는 설치·업데이트 과정에서 바뀔 수 있으므로 전체 경로를 영구 저장하지 말고 사용할 때 다시 조회하세요.
