@@ -7,6 +7,7 @@ import WebKit
 struct WaterWebViewRepresentable: UIViewRepresentable {
     let url: URL
     let bridgeConfiguration: WaterBridgeConfiguration
+    let lifecycle: WaterWebViewLifecycle
     @Binding var isLoading: Bool
     @Binding var errorMessage: String?
     let onBridgeMessage: WaterBridgeMessageHandler
@@ -43,7 +44,12 @@ struct WaterWebViewRepresentable: UIViewRepresentable {
         webView.uiDelegate = context.coordinator
         webView.allowsBackForwardNavigationGestures = true
         webView.scrollView.contentInsetAdjustmentBehavior = .automatic
+#if DEBUG
         webView.isInspectable = true
+#else
+        webView.isInspectable = false
+#endif
+        lifecycle.onCreated(webView)
         WaterBridgeLogger.webViewLoadRequested(url: url)
         if let synchronizer = bridgeConfiguration.sessionSynchronizer {
             context.coordinator.initialLoadTask = Task { @MainActor [weak webView] in
@@ -63,6 +69,7 @@ struct WaterWebViewRepresentable: UIViewRepresentable {
     }
 
     static func dismantleUIView(_ webView: WKWebView, coordinator: Coordinator) {
+        coordinator.parent.lifecycle.onDismantle(webView)
         (webView as? WaterHostedWebView)?.isBridgeActive = false
         coordinator.initialLoadTask?.cancel()
         webView.stopLoading()
@@ -122,7 +129,7 @@ struct WaterWebViewRepresentable: UIViewRepresentable {
         func webView(
             _ webView: WKWebView,
             decidePolicyFor navigationAction: WKNavigationAction,
-            decisionHandler: @escaping (WKNavigationActionPolicy) -> Void
+            decisionHandler: @escaping @MainActor @Sendable (WKNavigationActionPolicy) -> Void
         ) {
             guard let url = navigationAction.request.url,
                   url.scheme?.lowercased() == "water" else {
@@ -198,6 +205,7 @@ struct WaterWebViewRepresentable: UIViewRepresentable {
             didFinish navigation: WKNavigation!
         ) {
             parent.isLoading = false
+            parent.lifecycle.onFinished(webView)
             WaterBridgeLogger.webViewLoadFinished(
                 url: webView.url,
                 elapsedTime: elapsedTime
@@ -258,6 +266,7 @@ struct WaterWebViewRepresentable: UIViewRepresentable {
             loadStartedAt = nil
             parent.isLoading = false
             parent.errorMessage = error.localizedDescription
+            parent.lifecycle.onFailed(webView, error)
         }
     }
 

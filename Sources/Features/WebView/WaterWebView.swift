@@ -22,6 +22,7 @@ import WaterBridgeCore
 public struct WaterWebView: View {
     private let url: URL
     private let configuration: WaterBridgeConfiguration
+    private let lifecycle: WaterWebViewLifecycle
     private let onBridgeMessage: WaterBridgeMessageHandler
 
     @StateObject private var alertPresentation = WaterBridgeAlertPresentation()
@@ -33,8 +34,10 @@ public struct WaterWebView: View {
     public init(
         url: URL,
         configuration: WaterBridgeConfiguration = .init(),
+        lifecycle: WaterWebViewLifecycle = .init(),
         onBridgeMessage: @escaping WaterBridgeMessageHandler = { _ in }
     ) {
+        self.lifecycle = lifecycle
         self.url = url
         self.configuration = configuration
         self.onBridgeMessage = onBridgeMessage
@@ -45,6 +48,7 @@ public struct WaterWebView: View {
             WaterWebViewRepresentable(
                 url: url,
                 bridgeConfiguration: configuration,
+                lifecycle: lifecycle,
                 isLoading: $isLoading,
                 errorMessage: $errorMessage,
                 onBridgeMessage: onBridgeMessage,
