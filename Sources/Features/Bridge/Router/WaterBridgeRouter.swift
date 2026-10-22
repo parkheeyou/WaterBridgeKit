@@ -13,6 +13,7 @@ struct WaterBridgeRouter {
         onAlertRequested: @escaping @MainActor (String) -> Bool = { _ in false }
     ) {
         let registry = WaterBridgeRouteRegistry(
+            scheme: configuration.scheme,
             additionalRoutes: configuration.additionalRoutes,
             onExitRequested: onExitRequested,
             onOpenRequested: onOpenRequested,

@@ -12,8 +12,8 @@ struct WaterBridgeWebDestination {
 
 @MainActor
 enum WaterBridgeOpenURLHandler {
-    static let safariAPI = "water://openSafari"
-    static let webViewAPI = "water://openWebView"
+    static let safariAPI = "openSafari"
+    static let webViewAPI = "openWebView"
 
     static func safari(_ message: WaterBridgeMessage, context: WaterBridgeRouteContext) -> Any {
         handle(message, target: .safari, open: { _ in false })

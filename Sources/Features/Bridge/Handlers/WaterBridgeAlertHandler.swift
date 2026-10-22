@@ -3,7 +3,7 @@ import WaterBridgeCore
 
 @MainActor
 enum WaterBridgeAlertHandler {
-    static let api = "water://alert"
+    static let api = "alert"
 
     static func handle(_ message: WaterBridgeMessage, context: WaterBridgeRouteContext) -> Any {
         handle(message, present: { _ in false })
