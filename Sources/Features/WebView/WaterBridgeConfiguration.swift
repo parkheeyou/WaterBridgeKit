@@ -5,6 +5,7 @@ import WaterBridgeCore
 public struct WaterBridgeConfiguration {
     public static let defaultChannel = "Bridge"
 
+    public let scheme: String
     public let channel: String
     public let additionalRoutes: [WaterBridgeRoute]
     public let showsDebugConsole: Bool
@@ -12,11 +13,13 @@ public struct WaterBridgeConfiguration {
 
     public init(
         channel: String = Self.defaultChannel,
+        scheme: String = "water",
         additionalRoutes: [WaterBridgeRoute] = [],
         showsDebugConsole: Bool = true,
         sessionSynchronizer: WaterSessionSynchronizer? = nil
     ) {
         let channel = channel.trimmingCharacters(in: .whitespacesAndNewlines)
+        self.scheme = WaterBridgeScheme.normalized(scheme)
         self.channel = channel.isEmpty ? Self.defaultChannel : channel
         self.additionalRoutes = additionalRoutes
         self.showsDebugConsole = showsDebugConsole

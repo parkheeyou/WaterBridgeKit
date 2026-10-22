@@ -73,7 +73,7 @@ private let bridgeConfiguration = WaterBridgeConfiguration(
     channel: "BCUBridge",
     additionalRoutes: [
         WaterBridgeRoute(
-            api: "water://appInfo",
+            api: "appInfo",
             version: 1
         ) { message in
             let requestData = message.data as? [String: Any]
@@ -658,3 +658,45 @@ let www = try WaterFilePath.getFullResourceWWWRootPath()
 반환값은 `file://` URL 문자열이 아닌 절대 파일 시스템 경로입니다. 다운로드 폴더는 시스템 공용 Downloads와 별개이며, www는 읽기 전용 번들 리소스입니다. Xcode에 www 디렉터리 구조가 유지되도록 리소스로 포함해야 합니다. `Resources/www`처럼 리소스를 평탄화하여 파일만 복사하면 www 폴더를 찾을 수 없습니다. 빌드된 앱 번들에 실제 `www/` 디렉터리가 있는지 확인하세요.
 
 앱 컨테이너 경로는 설치·업데이트 과정에서 바뀔 수 있으므로 전체 경로를 영구 저장하지 말고 사용할 때 다시 조회하세요.
+
+## 브릿지 스킴 변경
+
+기본 스킴은 `water`이며 앱별로 변경할 수 있습니다. WebKit 메시지 핸들러 이름인 `channel`과 URL 스킴인 `scheme`은 별개입니다.
+
+```swift
+let configuration = WaterBridgeConfiguration(
+    channel: "Bridge",
+    scheme: "myapp",
+    additionalRoutes: [
+        WaterBridgeRoute(api: "custom", version: 1) { message in
+            WaterBridgeResponse.success(data: ["handled": true]).value
+        }
+    ]
+)
+// 이 configuration을 WaterWebView의 configuration 인자에 전달합니다.
+```
+
+```javascript
+window.webkit.messageHandlers.Bridge.postMessage("myapp://alert?message=hello");
+window.webkit.messageHandlers.Bridge.postMessage({
+  api: "myapp://openWebView",
+  data: { url: "https://example.com" }
+});
+// URL 탐색 방식도 동일한 스킴을 사용합니다.
+location.href = "myapp://exit";
+```
+
+기본 브릿지와 `routeApiList`의 API 주소도 설정한 스킴으로 변경됩니다. 앱 전용 Route는 `WaterBridgeRoute(api: "custom", version: 1)`처럼 API 이름만 등록하세요. Route는 스킴과 독립적으로 재사용되며, 동일한 이름의 기본 브릿지를 재정의할 수 있습니다. 기존 전체 URI 등록은 호환을 위해 스킴을 제거하고 API 이름으로 저장합니다. `route.api`와 `route.descriptor.api`는 API 이름이며, `routeApiList` 응답에는 현재 스킴을 조합한 전체 주소를 반환합니다. 스킴 없는 `api: "alert"`는 현재 설정한 스킴을 붙입니다. 명시적으로 다른 스킴을 사용한 주소는 현재 스킴으로 바꾸지 않습니다. `channel`과 `scheme`은 WebView를 생성할 때 결정되므로 변경하려면 WebView를 새로 생성하세요.
+
+스킴은 영문자로 시작하고 영문자·숫자·`+`·`-`·`.`을 사용할 수 있으며 소문자로 정규화합니다. 빈 값, 잘못된 문법, `http`·`https`·`file`·`javascript`·`data`·`about`은 프로그래밍 오류로 처리합니다. WebView 내부에서 가로채므로 이 용도만을 위해 앱의 Info.plist URL Types에 등록할 필요는 없습니다.
+
+웹 코드도 스킴 변경과 무관하게 재사용하려면, `postMessage`에서 API 이름만 전달하세요. 네이티브가 현재 WebView의 스킴을 붙여 처리합니다. 예제 `bridge-demo.html`도 이 방식을 사용합니다.
+
+```javascript
+const handler = window.webkit.messageHandlers.Bridge;
+await handler.postMessage({ api: "routeApiList" });
+await handler.postMessage({ api: "alert", data: { message: "hello" } });
+await handler.postMessage({ api: "openWebView", data: { url: "https://example.com" } });
+```
+
+명시적인 URI 호출(`water://...`, `test://...`)과 `location.href` 탐색 방식은 앱에 등록된 스킴과 일치해야 합니다. 예를 들어 앱이 `test`를 사용하면 `water://alert`는 지원하지 않는 API입니다.

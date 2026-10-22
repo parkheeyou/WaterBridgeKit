@@ -39,17 +39,23 @@ public struct WaterBridgeRoute {
         WaterBridgeRouteContext
     ) -> Any
 
+    /// 스킴을 제외한 API 이름입니다. 예: alert, openWebView.
     public let api: String
     public let version: Int
     package let handler: Handler
 
+    /// API 이름(예: `appInfo`)으로 등록합니다. 기존 전체 URI 입력은 이름만 추출합니다.
     /// 등록된 전체 Route 정보가 필요한 Handler를 생성합니다.
     public init(
         api: String,
         version: Int,
         handler: @escaping Handler
     ) {
-        self.api = api
+        // 기존 전체 URI 등록도 이름으로 정규화하여 스킴 변경과 무관하게 재사용합니다.
+        let name = api.range(of: "://").map { String(api[$0.upperBound...]) } ?? api
+        precondition(!name.isEmpty && !name.contains(where: { $0.isWhitespace || "?#/".contains($0) }),
+                     "Route에는 쿼리나 경로가 없는 API 이름을 지정하세요.")
+        self.api = name
         self.version = version
         self.handler = handler
     }

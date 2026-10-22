@@ -84,6 +84,7 @@ struct WaterWebViewRepresentable: UIViewRepresentable {
     final class Coordinator: NSObject, WKNavigationDelegate, WKUIDelegate, WKScriptMessageHandlerWithReply {
         var parent: WaterWebViewRepresentable
         let channel: String
+        let scheme: String
         private let router: WaterBridgeRouter
         weak var webView: WKWebView?
         private var loadStartedAt: Date?
@@ -91,6 +92,7 @@ struct WaterWebViewRepresentable: UIViewRepresentable {
 
         init(_ parent: WaterWebViewRepresentable) {
             self.parent = parent
+            self.scheme = parent.bridgeConfiguration.scheme
             self.channel = parent.bridgeConfiguration.channel
             self.router = WaterBridgeRouter(
                 configuration: parent.bridgeConfiguration,
@@ -118,7 +120,8 @@ struct WaterWebViewRepresentable: UIViewRepresentable {
             let bridgeMessage = WaterBridgeMessage(
                 channel: message.name,
                 body: message.body,
-                sourceURL: message.frameInfo.request.url
+                sourceURL: message.frameInfo.request.url,
+                scheme: scheme
             )
             handleBridgeMessage(
                 bridgeMessage,
@@ -132,7 +135,7 @@ struct WaterWebViewRepresentable: UIViewRepresentable {
             decisionHandler: @escaping @MainActor @Sendable (WKNavigationActionPolicy) -> Void
         ) {
             guard let url = navigationAction.request.url,
-                  url.scheme?.lowercased() == "water" else {
+                  url.scheme?.lowercased() == scheme else {
                 decisionHandler(.allow)
                 return
             }
@@ -145,7 +148,8 @@ struct WaterWebViewRepresentable: UIViewRepresentable {
             let bridgeMessage = WaterBridgeMessage(
                 channel: channel,
                 body: url.absoluteString,
-                sourceURL: webView.url
+                sourceURL: webView.url,
+                scheme: scheme
             )
             handleBridgeMessage(bridgeMessage)
             decisionHandler(.cancel)

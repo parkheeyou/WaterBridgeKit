@@ -2,6 +2,9 @@ import Foundation
 
 /// JavaScript에서 네이티브로 전달한 브릿지 메시지입니다.
 public struct WaterBridgeMessage {
+    /// 이 메시지의 API 이름을 해석할 URL 스킴입니다. 기본값은 `water`입니다.
+    public let scheme: String
+
     /// 등록된 WebKit 메시지 핸들러 이름입니다. 기본값은 `Bridge`입니다.
     public let channel: String
 
@@ -11,7 +14,8 @@ public struct WaterBridgeMessage {
     /// 메시지를 보낸 메인 문서의 URL입니다.
     public let sourceURL: URL?
 
-    public init(channel: String, body: Any, sourceURL: URL?) {
+    public init(channel: String, body: Any, sourceURL: URL?, scheme: String = "water") {
+        self.scheme = WaterBridgeScheme.normalized(scheme)
         self.channel = channel
         self.body = body
         self.sourceURL = sourceURL
@@ -56,16 +60,23 @@ public struct WaterBridgeMessage {
     }
 
     private var rawCommand: String? {
-        guard let value = body as? String, value.hasPrefix("water://"),
+        guard let value = body as? String, hasSchemePrefix(value),
               let command = value.components(separatedBy: "?").first,
               !(command.removingPercentEncoding ?? command).contains("{") else { return nil }
-        return value
+        return scheme + "://" + value.dropFirst(scheme.count + 3)
+    }
+
+    private func hasSchemePrefix(_ value: String) -> Bool {
+        value.lowercased().hasPrefix(scheme + "://")
     }
 
     private var apiValue: String? {
         func normalized(_ value: Any?) -> String? {
             guard let value = value as? String, !value.isEmpty else { return nil }
-            return value.hasPrefix("water://") ? value : "water://\(value)"
+            if let separator = value.range(of: "://") {
+                return value[..<separator.lowerBound].lowercased() + value[separator.lowerBound...]
+            }
+            return "\(scheme)://\(value)"
         }
         if let rawCommand { return rawCommand }
         if let dictionary {
@@ -80,11 +91,11 @@ public struct WaterBridgeMessage {
         // 이동 URL의 JSON 쿼리 등을 브릿지 envelope로 오인하지 않습니다.
         if rawCommand != nil { return nil }
         if let dictionary = body as? [String: Any] {
-            return Self.expandingNestedEnvelope(in: dictionary)
+            return expandingNestedEnvelope(in: dictionary)
         }
 
         guard let value = body as? String else { return nil }
-        return Self.decodeEnvelope(value)
+        return decodeEnvelope(value)
     }
 
     private func value(for key: String) -> Any? {
@@ -94,7 +105,7 @@ public struct WaterBridgeMessage {
         return value
     }
 
-    private static func decodeEnvelope(_ value: String) -> [String: Any]? {
+    private func decodeEnvelope(_ value: String) -> [String: Any]? {
         let decodedValues = [
             value.removingPercentEncoding,
             value
@@ -104,10 +115,11 @@ public struct WaterBridgeMessage {
             let trimmedValue = decodedValue.trimmingCharacters(
                 in: .whitespacesAndNewlines
             )
+            if trimmedValue.contains("://"), !trimmedValue.hasPrefix("{"), !hasSchemePrefix(trimmedValue) { continue }
             var candidates = [trimmedValue]
 
-            if trimmedValue.hasPrefix("water://") {
-                candidates.append(String(trimmedValue.dropFirst("water://".count)))
+            if hasSchemePrefix(trimmedValue) {
+                candidates.append(String(trimmedValue.dropFirst(scheme.count + 3)))
             }
 
             if let openingBrace = trimmedValue.firstIndex(of: "{"),
@@ -131,10 +143,10 @@ public struct WaterBridgeMessage {
         return nil
     }
 
-    private static func expandingNestedEnvelope(
+    private func expandingNestedEnvelope(
         in dictionary: [String: Any]
     ) -> [String: Any] {
-        if let api = dictionary["api"] as? String, api.hasPrefix("water://"),
+        if let api = dictionary["api"] as? String, hasSchemePrefix(api),
            let command = api.components(separatedBy: "?").first, !(command.removingPercentEncoding ?? command).contains("{") {
             return dictionary
         }
