@@ -43,6 +43,8 @@ public struct WaterBridgeRoute {
     public let api: String
     public let version: Int
     package let handler: Handler
+    public typealias AsyncHandler = @MainActor (WaterBridgeMessage, WaterBridgeRouteContext) async -> Any
+    private let asyncHandler: AsyncHandler?
 
     /// API 이름(예: `appInfo`)으로 등록합니다. 기존 전체 URI 입력은 이름만 추출합니다.
     /// 등록된 전체 Route 정보가 필요한 Handler를 생성합니다.
@@ -58,6 +60,23 @@ public struct WaterBridgeRoute {
         self.api = name
         self.version = version
         self.handler = handler
+        self.asyncHandler = nil
+    }
+
+    /// 완료 콜백을 기다리는 앱 기능을 위한 비동기 Route입니다.
+    public init(api: String, version: Int, asyncHandler: @escaping AsyncHandler) {
+        let name = api.range(of: "://").map { String(api[$0.upperBound...]) } ?? api
+        precondition(!name.isEmpty && !name.contains(where: { $0.isWhitespace || "?#/".contains($0) }), "유효한 API 이름이 필요합니다.")
+        self.api = name
+        self.version = version
+        self.handler = { _, _ in WaterBridgeResponse.failure(message: "비동기 Route는 비동기 응답 경로로 실행해야 합니다.").value }
+        self.asyncHandler = asyncHandler
+    }
+
+    @MainActor
+    package func handleAsync(_ message: WaterBridgeMessage, context: WaterBridgeRouteContext) async -> Any {
+        if let asyncHandler { return await asyncHandler(message, context) }
+        return handler(message, context)
     }
 
     /// 앱에서 간단한 추가 브릿지를 등록할 때 사용하는 편의 생성자입니다.
