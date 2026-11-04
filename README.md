@@ -713,3 +713,17 @@ DEBUG 빌드의 `.waterDebugConsole()`은 하단에 `크래시`와 `로그` 버�
     WaterCrashReportsView()
 }
 ```
+
+## 웹페이지의 전화 / 문자 링크
+
+`WaterWebView`는 메인 프레임에서 발생한 `tel:`·`sms:` URL 탐색을 가로채고 시스템 URL 열기로 전달합니다. 브릿지 등록이나 `postMessage` 호출은 필요하지 않으며, 앱에 설정된 브릿지 스킴과도 무관합니다.
+
+```html
+<a href="tel:01012345678">전화하기</a>
+<a href="sms:01012345678">문자 보내기</a>
+<a href="sms:01012345678" target="_blank">새 창 링크로 문자 보내기</a>
+```
+
+번호를 포함한 URL을 그대로 전달하며, 전화 연결 확인 및 문자 작성·전송은 시스템 앱에서 진행합니다. `sms:`만 전달하면 수신자를 지정하지 않은 문자 작성 화면을 요청할 수 있습니다. 관련 동작은 [Apple 전화 링크 문서](https://developer.apple.com/library/archive/featuredarticles/iPhoneURLScheme_Reference/PhoneLinks/PhoneLinks.html)와 [문자 링크 문서](https://developer.apple.com/library/archive/featuredarticles/iPhoneURLScheme_Reference/SMSLinks/SMSLinks.html)를 따릅니다.
+
+해당 스킴의 웹뷰 탐색은 취소되므로 전화·문자 링크가 웹페이지 로딩 오류 화면으로 바뀌지 않습니다. 시스템에서 URL을 열 수 없다고 반환하면 안내 알림을 표시합니다. 시뮬레이터나 해당 기능을 지원하지 않는 기기에서는 열리지 않을 수 있으므로 실제 iPhone에서도 확인하세요. 하위 프레임의 시스템 앱 호출과 처리 중 중복 요청은 차단하며, HTTP/HTTPS 탐색과 기존 브릿지 처리는 유지합니다. `canOpenURL` 사전 조회를 사용하지 않으므로 이 기능을 위한 `LSApplicationQueriesSchemes` 추가는 필요하지 않습니다.
