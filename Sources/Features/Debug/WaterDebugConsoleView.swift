@@ -21,9 +21,7 @@ private struct WaterDebugConsoleModifier: ViewModifier {
     @State private var isPresented = false
 
     func body(content: Content) -> some View {
-        ZStack(alignment: .bottomTrailing) {
-            content
-
+        content.overlay(alignment: .bottomTrailing) {
             if isEnabled, !isPresented {
                 Button {
                     WaterDebugLogger.event("디버그 로그 콘솔을 열었습니다.")
@@ -68,37 +66,34 @@ private struct WaterDebugConsoleView: View {
                 WaterDebugLogCenter.shared.entries().reversed()
             )
 
-            ZStack {
-                Color.black.opacity(0.94)
-                    .ignoresSafeArea()
+            VStack(spacing: 0) {
+                header(entryCount: entries.count)
+                categoryFilter
+                Divider().overlay(.white.opacity(0.16))
 
-                VStack(spacing: 0) {
-                    header(entryCount: entries.count)
-                    categoryFilter
-                    Divider().overlay(.white.opacity(0.16))
-
-                    if entries.isEmpty {
-                        ContentUnavailableView(
-                            "표시할 로그가 없습니다",
-                            systemImage: "terminal",
-                            description: Text("화면에서 동작한 뒤 로그를 다시 확인해 주세요.")
-                        )
-                        .foregroundStyle(.white.opacity(0.75))
-                        .frame(maxWidth: .infinity, maxHeight: .infinity)
-                    } else {
-                        ScrollView {
-                            LazyVStack(alignment: .leading, spacing: 12) {
-                                ForEach(entries) { entry in
-                                    logRow(entry)
-                                }
+                if entries.isEmpty {
+                    ContentUnavailableView(
+                        "표시할 로그가 없습니다",
+                        systemImage: "terminal",
+                        description: Text("화면에서 동작한 뒤 로그를 다시 확인해 주세요.")
+                    )
+                    .foregroundStyle(.white.opacity(0.75))
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                } else {
+                    ScrollView {
+                        LazyVStack(alignment: .leading, spacing: 12) {
+                            ForEach(entries) { entry in
+                                logRow(entry)
                             }
-                            .padding(14)
                         }
+                        .padding(14)
                     }
                 }
-                .safeAreaPadding(.vertical, 4)
             }
+            .padding(.vertical, 4)
             .frame(maxWidth: .infinity, maxHeight: .infinity)
+            // 배경을 레이아웃 자식으로 두거나 safe area를 무시하면 헤더가 네비게이션 바 영역까지 확장될 수 있습니다.
+            .background { Color.black.opacity(0.94) }
         }
     }
 
