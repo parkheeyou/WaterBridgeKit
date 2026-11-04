@@ -700,3 +700,16 @@ await handler.postMessage({ api: "openWebView", data: { url: "https://example.co
 ```
 
 명시적인 URI 호출(`water://...`, `test://...`)과 `location.href` 탐색 방식은 앱에 등록된 스킴과 일치해야 합니다. 예를 들어 앱이 `test`를 사용하면 `water://alert`는 지원하지 않는 API입니다.
+
+
+### 크래시 보고서 플로팅 버튼
+
+DEBUG 빌드의 `.waterDebugConsole()`은 하단에 `크래시`와 `로그` 버튼을 함께 표시합니다. `WaterWebView`에는 기본 적용되어 있으므로 웹뷰에서도 저장된 크래시 보고서를 열 수 있습니다. `크래시` 버튼은 `WaterCrashReportsView`를 시트로 표시하며 목록, 상세 내용, 공유, 삭제 기능을 제공합니다. 로그 콘솔을 열면 플로팅 버튼은 숨겨지고 닫으면 다시 표시됩니다. Release 빌드에는 플로팅 버튼이 표시되지 않습니다.
+
+앱에서 별도 버튼으로도 같은 화면을 사용할 수 있습니다.
+
+```swift
+.sheet(isPresented: $showsCrashReports) {
+    WaterCrashReportsView()
+}
+```
