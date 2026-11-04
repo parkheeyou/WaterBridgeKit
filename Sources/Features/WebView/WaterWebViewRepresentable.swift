@@ -72,6 +72,7 @@ struct WaterWebViewRepresentable: UIViewRepresentable {
         coordinator.parent.lifecycle.onDismantle(webView)
         (webView as? WaterHostedWebView)?.isBridgeActive = false
         coordinator.initialLoadTask?.cancel()
+        coordinator.systemLinks.cancel()
         coordinator.bridgeTasks.values.forEach { $0.cancel() }
         coordinator.bridgeTasks.removeAll()
         webView.stopLoading()
@@ -87,13 +88,22 @@ struct WaterWebViewRepresentable: UIViewRepresentable {
         var parent: WaterWebViewRepresentable
         let channel: String
         let scheme: String
+        let systemLinks: WaterWebSystemLinkHandler
         private let router: WaterBridgeRouter
         weak var webView: WKWebView?
         private var loadStartedAt: Date?
         var initialLoadTask: Task<Void, Never>?
         var bridgeTasks: [UUID: Task<Void, Never>] = [:]
 
-        init(_ parent: WaterWebViewRepresentable) {
+        init(
+            _ parent: WaterWebViewRepresentable,
+            systemLinks: WaterWebSystemLinkHandler? = nil
+        ) {
+            self.systemLinks = systemLinks ?? WaterWebSystemLinkHandler(
+                onFailure: { message in
+                    _ = parent.onAlertRequested(message)
+                }
+            )
             self.parent = parent
             self.scheme = parent.bridgeConfiguration.scheme
             self.channel = parent.bridgeConfiguration.channel
@@ -137,8 +147,15 @@ struct WaterWebViewRepresentable: UIViewRepresentable {
             decidePolicyFor navigationAction: WKNavigationAction,
             decisionHandler: @escaping @MainActor @Sendable (WKNavigationActionPolicy) -> Void
         ) {
-            guard let url = navigationAction.request.url,
-                  url.scheme?.lowercased() == scheme else {
+            guard let url = navigationAction.request.url else {
+                decisionHandler(.allow)
+                return
+            }
+            if systemLinks.handle(url, fromMainFrame: navigationAction.sourceFrame.isMainFrame) {
+                decisionHandler(.cancel)
+                return
+            }
+            guard url.scheme?.lowercased() == scheme else {
                 decisionHandler(.allow)
                 return
             }
@@ -247,6 +264,9 @@ struct WaterWebViewRepresentable: UIViewRepresentable {
         ) -> WKWebView? {
             if navigationAction.targetFrame == nil,
                let url = navigationAction.request.url {
+                if systemLinks.handle(url, fromMainFrame: navigationAction.sourceFrame.isMainFrame) {
+                    return nil
+                }
                 WaterBridgeLogger.webViewLoadRequested(url: url)
                 webView.load(URLRequest(url: url))
             }
