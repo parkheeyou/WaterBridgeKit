@@ -41,4 +41,10 @@ struct WaterBridgeRouter {
 
         return route.handle(message, context: context)
     }
+    func responseAsync(for message: WaterBridgeMessage) async -> Any {
+        guard let api = message.api else { return WaterBridgeResponse.failure(message: "브릿지 API가 없습니다.").value }
+        guard let route = registry.route(for: api) else { return WaterBridgeResponse.failure(message: "지원하지 않는 API입니다: \(api)").value }
+        return await route.handleAsync(message, context: context)
+    }
+
 }

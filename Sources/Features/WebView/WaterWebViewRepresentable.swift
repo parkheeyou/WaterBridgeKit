@@ -72,6 +72,8 @@ struct WaterWebViewRepresentable: UIViewRepresentable {
         coordinator.parent.lifecycle.onDismantle(webView)
         (webView as? WaterHostedWebView)?.isBridgeActive = false
         coordinator.initialLoadTask?.cancel()
+        coordinator.bridgeTasks.values.forEach { $0.cancel() }
+        coordinator.bridgeTasks.removeAll()
         webView.stopLoading()
         webView.configuration.userContentController.removeScriptMessageHandler(
             forName: coordinator.channel
@@ -89,6 +91,7 @@ struct WaterWebViewRepresentable: UIViewRepresentable {
         weak var webView: WKWebView?
         private var loadStartedAt: Date?
         var initialLoadTask: Task<Void, Never>?
+        var bridgeTasks: [UUID: Task<Void, Never>] = [:]
 
         init(_ parent: WaterWebViewRepresentable) {
             self.parent = parent
@@ -171,26 +174,29 @@ struct WaterWebViewRepresentable: UIViewRepresentable {
                 return
             }
 
-            let response = router.response(for: bridgeMessage)
-            WaterBridgeLogger.responded(api: api, response: response)
-
-            if let callback = bridgeMessage.callback,
-               let webView {
-                WaterBridgeCallbackResponder.respond(
-                    api: api,
-                    callback: callback,
-                    response: response,
-                    in: webView
-                )
+            let requestID = UUID()
+            let router = router
+            bridgeTasks[requestID] = Task { @MainActor [weak self, weak webView] in
+                let response = await router.responseAsync(for: bridgeMessage)
+                defer { self?.bridgeTasks[requestID] = nil }
+                guard !Task.isCancelled, let webView, self?.webView === webView else {
+                    replyHandler?(nil, "브릿지 요청이 취소되었습니다.")
+                    return
+                }
+                WaterBridgeLogger.responded(api: api, response: response)
+                if let callback = bridgeMessage.callback {
+                    WaterBridgeCallbackResponder.respond(api: api, callback: callback, response: response, in: webView)
+                }
+                replyHandler?(response, nil)
             }
-
-            replyHandler?(response, nil)
         }
 
         func webView(
             _ webView: WKWebView,
             didStartProvisionalNavigation navigation: WKNavigation!
         ) {
+            bridgeTasks.values.forEach { $0.cancel() }
+            bridgeTasks.removeAll()
             loadStartedAt = Date()
             parent.isLoading = true
             parent.errorMessage = nil
