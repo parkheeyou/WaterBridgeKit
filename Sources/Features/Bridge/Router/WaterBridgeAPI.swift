@@ -14,21 +14,21 @@ enum WaterBridgeAPI {
 
     static let all: [Definition] = [
         (
-            api: "routeApiList",
+            api: WaterBridgeRouteAPIListHandler.shared.api,
             version: 2,
-            handler: WaterBridgeRouteAPIListHandler.handle
+            handler: WaterBridgeRouteAPIListHandler.shared.handle
         ),
         (
-            api: "nativeInfo",
+            api: WaterBridgeNativeInfoHandler.shared.api,
             version: 2,
-            handler: WaterBridgeNativeInfoHandler.handle
+            handler: WaterBridgeNativeInfoHandler.shared.handle
         ),
         (
-            api: WaterBridgeExitHandler.api,
+            api: WaterBridgeExitHandler.shared.api,
             version: 1,
-            handler: WaterBridgeExitHandler.handle
+            handler: WaterBridgeExitHandler.shared.handle
         ),
-        (api: WaterBridgeAlertHandler.api, version: 1, handler: WaterBridgeAlertHandler.handle),
+        (api: WaterBridgeAlertHandler.shared.api, version: 1, handler: WaterBridgeAlertHandler.shared.handle),
         (api: WaterBridgeOpenURLHandler.safariAPI, version: 1, handler: WaterBridgeOpenURLHandler.safari),
         (api: WaterBridgeOpenURLHandler.webViewAPI, version: 1, handler: WaterBridgeOpenURLHandler.webView)
     ]

@@ -19,8 +19,8 @@ struct WaterBridgeRouteRegistry {
                 api: definition.api,
                 version: definition.version,
                 handler: { message, context in
-                    if definition.api == WaterBridgeAlertHandler.api {
-                        return WaterBridgeAlertHandler.handle(message, present: onAlertRequested)
+                    if definition.api == WaterBridgeAlertHandler.shared.api {
+                        return WaterBridgeAlertHandler.shared.handle(message, present: onAlertRequested)
                     }
                     if definition.api == WaterBridgeOpenURLHandler.safariAPI {
                         return WaterBridgeOpenURLHandler.handle(message, target: .safari, open: onOpenRequested)
@@ -28,7 +28,7 @@ struct WaterBridgeRouteRegistry {
                     if definition.api == WaterBridgeOpenURLHandler.webViewAPI {
                         return WaterBridgeOpenURLHandler.handle(message, target: .webView, open: onOpenRequested)
                     }
-                    if definition.api == WaterBridgeExitHandler.api {
+                    if definition.api == WaterBridgeExitHandler.shared.api {
                         onExitRequested()
                     }
                     return definition.handler(message, context)
