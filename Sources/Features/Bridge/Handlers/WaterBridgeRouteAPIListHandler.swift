@@ -15,4 +15,11 @@ final class WaterBridgeRouteAPIListHandler: WaterBridgeHandler {
             data: context.routes.map(\.value)
         ).value
     }
+    
+    func asyncHandle(
+        _ message: WaterBridgeMessage,
+        context: WaterBridgeRouteContext
+    ) async -> Any {
+        "비동기 응답일때 사용"
+    }
 }

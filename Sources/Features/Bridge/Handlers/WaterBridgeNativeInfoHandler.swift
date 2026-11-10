@@ -69,4 +69,11 @@ final class WaterBridgeNativeInfoHandler: WaterBridgeHandler {
         return identifier.isEmpty ? UIDevice.current.model : identifier
     }
     #endif
+    
+    func asyncHandle(
+        _ message: WaterBridgeMessage,
+        context: WaterBridgeRouteContext
+    ) async -> Any {
+        "비동기 응답일때 사용"
+    }
 }

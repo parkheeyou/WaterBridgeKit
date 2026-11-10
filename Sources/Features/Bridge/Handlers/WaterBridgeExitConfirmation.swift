@@ -9,7 +9,9 @@ final class WaterBridgeExitConfirmation: ObservableObject {
     private var hasPendingRequest = false
     private let terminate: @MainActor () -> Void
 
-    init(terminate: @escaping @MainActor () -> Void = { Darwin.exit(EXIT_SUCCESS) }) {
+    init(terminate: @escaping @MainActor () -> Void = {
+        Darwin.exit(EXIT_SUCCESS)
+    }) {
         self.terminate = terminate
     }
 

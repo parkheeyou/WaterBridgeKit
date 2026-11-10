@@ -11,7 +11,9 @@ final class WaterBridgeAlertPresentation: ObservableObject {
 
     func present(_ message: String) -> Bool {
         guard notice == nil else { return false }
+        
         notice = .init(message: message)
+        
         return true
     }
 }

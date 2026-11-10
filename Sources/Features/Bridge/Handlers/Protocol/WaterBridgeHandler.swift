@@ -19,7 +19,7 @@ public protocol WaterBridgeHandler {
     ) -> Any
     
     // 비동기 응답
-    func handle(
+    func asyncHandle(
         _ message: WaterBridgeMessage,
         context: WaterBridgeRouteContext
     ) async -> Any
