@@ -1,7 +1,7 @@
 import WaterBridgeCore
 
 @MainActor
-public final class WaterBridgeExitHandler: WaterBridgeHandler {
+final class WaterBridgeExitHandler: WaterBridgeHandler {
     static let shared = WaterBridgeExitHandler()
     
     let api = "exit"

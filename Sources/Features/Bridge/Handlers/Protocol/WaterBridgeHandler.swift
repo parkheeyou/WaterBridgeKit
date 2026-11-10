@@ -9,11 +9,18 @@
 import Foundation
 
 @MainActor
-protocol WaterBridgeHandler {
+public protocol WaterBridgeHandler {
     var api: String { get }
     
+    // 동기 응답
     func handle(
         _ message: WaterBridgeMessage,
         context: WaterBridgeRouteContext
     ) -> Any
+    
+    // 비동기 응답
+    func handle(
+        _ message: WaterBridgeMessage,
+        context: WaterBridgeRouteContext
+    ) async -> Any
 }

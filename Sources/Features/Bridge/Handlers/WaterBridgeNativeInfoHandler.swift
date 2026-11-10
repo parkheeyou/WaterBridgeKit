@@ -7,7 +7,7 @@ import UIKit
 
 /// 앱과 기기의 기본 네이티브 정보를 반환합니다.
 @MainActor
-public final class WaterBridgeNativeInfoHandler: WaterBridgeHandler {
+final class WaterBridgeNativeInfoHandler: WaterBridgeHandler {
     static let shared = WaterBridgeNativeInfoHandler()
     
     let api = "nativeInfo"

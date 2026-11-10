@@ -29,7 +29,7 @@ import WaterBridgeCore
 //    }
 //}
 
-public final class WaterBridgeAlertHandler: WaterBridgeHandler {
+final class WaterBridgeAlertHandler: WaterBridgeHandler {
     static let shared = WaterBridgeAlertHandler()
     
     let api = "alert"
