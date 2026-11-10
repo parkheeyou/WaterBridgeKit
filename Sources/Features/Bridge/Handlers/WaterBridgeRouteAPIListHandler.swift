@@ -2,8 +2,12 @@ import WaterBridgeCore
 
 /// 현재 등록된 네이티브 브릿지 API 목록을 반환합니다.
 @MainActor
-enum WaterBridgeRouteAPIListHandler {
-    static func handle(
+public final class WaterBridgeRouteAPIListHandler: WaterBridgeHandler {
+    static let shared = WaterBridgeRouteAPIListHandler()
+    
+    let api = "routeApiList"
+    
+    func handle(
         _ message: WaterBridgeMessage,
         context: WaterBridgeRouteContext
     ) -> Any {

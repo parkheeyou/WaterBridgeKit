@@ -7,8 +7,12 @@ import UIKit
 
 /// 앱과 기기의 기본 네이티브 정보를 반환합니다.
 @MainActor
-enum WaterBridgeNativeInfoHandler {
-    static func handle(
+public final class WaterBridgeNativeInfoHandler: WaterBridgeHandler {
+    static let shared = WaterBridgeNativeInfoHandler()
+    
+    let api = "nativeInfo"
+    
+    func handle(
         _ message: WaterBridgeMessage,
         context: WaterBridgeRouteContext
     ) -> Any {
@@ -49,7 +53,7 @@ enum WaterBridgeNativeInfoHandler {
     }
 
     #if canImport(UIKit)
-    private static var modelNumber: String {
+    private var modelNumber: String {
         if let simulatorModel = ProcessInfo.processInfo.environment[
             "SIMULATOR_MODEL_IDENTIFIER"
         ], !simulatorModel.isEmpty {
