@@ -14,9 +14,19 @@ public struct WaterCrashReportsView: View {
         NavigationStack {
             List {
                 Section("수집기 상태") {
-                    Text(WaterCrashReporter.shared.isEnabled ? "크래시 수집 활성화" : "크래시 수집 비활성화")
-                    Text("디버거 연결 중에는 비활성화됩니다. 저장된 보고서는 다음 실행에서 표시되며 최근 10개까지 보관됩니다.")
-                        .font(.footnote).foregroundStyle(.secondary)
+                    Text(
+                        WaterCrashReporter.shared.isEnabled ?
+                        "크래시 수집 활성화" :
+                        "크래시 수집 비활성화"
+                    )
+                    
+                    Text(
+                        WaterCrashReporter.shared.isEnabled ?
+                        "저장된 보고서는 다음 실행에서 표시되며 최근 10개까지 보관됩니다.":
+                        "디버거 연결 중에는 비활성화됩니다."
+                    )
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
                 }
                 if let errorMessage { Text(errorMessage).foregroundStyle(.red) }
                 if reports.isEmpty {
