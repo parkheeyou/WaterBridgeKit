@@ -26,6 +26,9 @@ struct WaterWebViewRepresentable: UIViewRepresentable {
             contentWorld: .page,
             name: context.coordinator.channel
         )
+#if DEBUG
+        context.coordinator.consoleCapture?.install(on: userContentController)
+#endif
         // userContentController.addUserScript(Self.bridgeBootstrapScript)
 
         let webViewConfiguration = WKWebViewConfiguration()
@@ -73,6 +76,9 @@ struct WaterWebViewRepresentable: UIViewRepresentable {
         (webView as? WaterHostedWebView)?.isBridgeActive = false
         coordinator.initialLoadTask?.cancel()
         coordinator.systemLinks.cancel()
+#if DEBUG
+        coordinator.consoleCapture?.remove(from: webView.configuration.userContentController)
+#endif
         coordinator.bridgeTasks.values.forEach { $0.cancel() }
         coordinator.bridgeTasks.removeAll()
         webView.stopLoading()
@@ -88,6 +94,9 @@ struct WaterWebViewRepresentable: UIViewRepresentable {
         var parent: WaterWebViewRepresentable
         let channel: String
         let scheme: String
+#if DEBUG
+        let consoleCapture: WaterWebConsoleCapture?
+#endif
         let systemLinks: WaterWebSystemLinkHandler
         private let router: WaterBridgeRouter
         weak var webView: WKWebView?
@@ -99,6 +108,9 @@ struct WaterWebViewRepresentable: UIViewRepresentable {
             _ parent: WaterWebViewRepresentable,
             systemLinks: WaterWebSystemLinkHandler? = nil
         ) {
+#if DEBUG
+            self.consoleCapture = parent.bridgeConfiguration.capturesWebConsoleLogs ? WaterWebConsoleCapture() : nil
+#endif
             self.systemLinks = systemLinks ?? WaterWebSystemLinkHandler(
                 onFailure: { message in
                     _ = parent.onAlertRequested(message)
