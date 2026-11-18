@@ -727,3 +727,16 @@ DEBUG 빌드의 `.waterDebugConsole()`은 하단에 `크래시`와 `로그` 버�
 번호를 포함한 URL을 그대로 전달하며, 전화 연결 확인 및 문자 작성·전송은 시스템 앱에서 진행합니다. `sms:`만 전달하면 수신자를 지정하지 않은 문자 작성 화면을 요청할 수 있습니다. 관련 동작은 [Apple 전화 링크 문서](https://developer.apple.com/library/archive/featuredarticles/iPhoneURLScheme_Reference/PhoneLinks/PhoneLinks.html)와 [문자 링크 문서](https://developer.apple.com/library/archive/featuredarticles/iPhoneURLScheme_Reference/SMSLinks/SMSLinks.html)를 따릅니다.
 
 해당 스킴의 웹뷰 탐색은 취소되므로 전화·문자 링크가 웹페이지 로딩 오류 화면으로 바뀌지 않습니다. 시스템에서 URL을 열 수 없다고 반환하면 안내 알림을 표시합니다. 시뮬레이터나 해당 기능을 지원하지 않는 기기에서는 열리지 않을 수 있으므로 실제 iPhone에서도 확인하세요. 하위 프레임의 시스템 앱 호출과 처리 중 중복 요청은 차단하며, HTTP/HTTPS 탐색과 기존 브릿지 처리는 유지합니다. `canOpenURL` 사전 조회를 사용하지 않으므로 이 기능을 위한 `LSApplicationQueriesSchemes` 추가는 필요하지 않습니다.
+
+## 웹 console 로그 수집
+
+DEBUG 빌드에서는 `WaterWebView`가 문서 시작 시 JavaScript를 주입하여 `console.log/info/debug/warn/error`를 네이티브 로그로 전달합니다. 하단 **로그 → WEBVIEW**에서 `[console.log][main] ...` 형식으로 확인하거나 Xcode 콘솔에서 볼 수 있습니다. iframe의 출력은 `[iframe]`으로 표시됩니다. 원래 console 함수도 호출하므로 Safari 개발자 도구의 출력은 유지됩니다.
+
+객체·배열, Error 스택, 처리되지 않은 JavaScript 오류 및 Promise rejection을 기록합니다. 순환 참조·getter·깊은 객체를 안전하게 요약하며 한 번에 최대 20개 인자, 문자열당 2,000자, 메시지당 12,000자로 제한합니다. WebKit의 파일/출처 보안 정책으로 오류 상세가 `Script error.`로 가려지면 해당 메시지만 기록할 수 있습니다. 네트워크 요청 자체나 개발자 도구 전체 기능을 수집하는 것은 아닙니다.
+
+```swift
+// DEBUG 빌드에서 기본 활성화. 화면 표시 여부와 수집 여부는 독립 설정입니다.
+WaterBridgeConfiguration(capturesWebConsoleLogs: false) // 웹 로그 수집 해제
+```
+
+Release 빌드에는 수집 스크립트와 전용 메시지 핸들러를 설치하지 않습니다. 브릿지 채널/스킴과는 독립적으로 동작하며 WebView를 해제할 때 로그 핸들러도 제거합니다. 이 설정은 WebView 생성 시 적용됩니다. 예제 `bridge-demo.html`의 웹 console 로그 버튼으로 동작을 확인할 수 있습니다.

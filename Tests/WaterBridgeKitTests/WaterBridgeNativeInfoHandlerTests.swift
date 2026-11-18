@@ -12,7 +12,7 @@ final class WaterBridgeNativeInfoHandlerTests: XCTestCase {
         )
 
         let response = try XCTUnwrap(
-            WaterBridgeNativeInfoHandler.handle(
+            WaterBridgeNativeInfoHandler.shared.handle(
                 message,
                 context: WaterBridgeRouteContext(
                     channel: "Bridge",
