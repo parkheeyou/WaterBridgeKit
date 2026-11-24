@@ -28,8 +28,10 @@ public enum WaterDebugLogger {
         level: WaterDebugLogLevel = .info
     ) {
 #if DEBUG
-        logger.log(level: osLogType(for: level), "\(message, privacy: .public)")
+        // 시스템 로그 출력 길이와 무관하게 앱 내 콘솔에 먼저 기록합니다.
         capture(message, category: category, level: level)
+        let preview = WaterDebugLogMessage.preview(message)
+        logger.log(level: osLogType(for: level), "\(preview, privacy: .public)")
 #endif
     }
 

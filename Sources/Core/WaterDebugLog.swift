@@ -47,12 +47,16 @@ public struct WaterDebugLogEntry: Identifiable, Equatable, Sendable {
 public final class WaterDebugLogCenter: @unchecked Sendable {
     public static let shared = WaterDebugLogCenter()
 
+    private let maximumMessageLength: Int
     private let maximumEntryCount: Int
     private let lock = NSLock()
     private var storedEntries: [WaterDebugLogEntry] = []
 
-    public init(maximumEntryCount: Int = 1_000) {
+    /// maximumMessageLength는 생략 안내를 제외한 본문 최대 글자 수입니다.
+    /// 제한을 넘으면 앞 75%와 뒤 25%를 남깁니다. 원본 전체는 저장하지 않습니다.
+    public init(maximumEntryCount: Int = 100, maximumMessageLength: Int = 400) {
         self.maximumEntryCount = max(1, maximumEntryCount)
+        self.maximumMessageLength = max(1, maximumMessageLength)
     }
 
     public func record(
@@ -66,7 +70,7 @@ public final class WaterDebugLogCenter: @unchecked Sendable {
             timestamp: timestamp,
             category: category,
             level: level,
-            message: message
+            message: WaterDebugLogMessage.preview(message, maximumLength: maximumMessageLength)
         )
 
         lock.lock()
