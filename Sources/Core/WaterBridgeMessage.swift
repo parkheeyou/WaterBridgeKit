@@ -14,7 +14,12 @@ public struct WaterBridgeMessage {
     /// 메시지를 보낸 메인 문서의 URL입니다.
     public let sourceURL: URL?
 
-    public init(channel: String, body: Any, sourceURL: URL?, scheme: String = "water") {
+    public init(
+        channel: String,
+        body: Any,
+        sourceURL: URL?,
+        scheme: String = "water"
+    ) {
         self.scheme = WaterBridgeScheme.normalized(scheme)
         self.channel = channel
         self.body = body
@@ -33,11 +38,16 @@ public struct WaterBridgeMessage {
 
     /// 웹에서 응답을 받을 JavaScript callback 함수 이름입니다.
     public var callback: String? {
-        guard let callback = dictionary?["callback"] as? String else {
+        guard let callback = dictionary?[
+            "callback"
+        ] as? String else {
             return nil
         }
 
-        let value = callback.trimmingCharacters(in: .whitespacesAndNewlines)
+        let value = callback.trimmingCharacters(
+            in: .whitespacesAndNewlines
+        )
+        
         return value.isEmpty ? nil : value
     }
 
@@ -50,62 +60,95 @@ public struct WaterBridgeMessage {
     /// 쿼리 파라미터를 제외한 브릿지 API 주소입니다.
     public var api: String? {
         guard let value = apiValue else { return nil }
-        return value.components(separatedBy: CharacterSet(charactersIn: "?#")).first
+        
+        return value.components(
+            separatedBy: CharacterSet(charactersIn: "?#")
+        ).first
     }
 
     /// 브릿지 URI의 쿼리입니다. 값은 URLComponents가 한 번만 디코딩합니다.
     public var queryItems: [URLQueryItem] {
         guard let value = apiValue else { return [] }
-        return URLComponents(string: value)?.queryItems ?? []
+        
+        return URLComponents(
+            string: value
+        )?.queryItems ?? []
     }
 
     private var rawCommand: String? {
         guard let value = body as? String, hasSchemePrefix(value),
               let command = value.components(separatedBy: "?").first,
-              !(command.removingPercentEncoding ?? command).contains("{") else { return nil }
+              !(
+                command.removingPercentEncoding ?? command
+              ).contains("{") else {
+            return nil
+        }
+        
         return scheme + "://" + value.dropFirst(scheme.count + 3)
     }
 
-    private func hasSchemePrefix(_ value: String) -> Bool {
+    private func hasSchemePrefix(
+        _ value: String
+    ) -> Bool {
         value.lowercased().hasPrefix(scheme + "://")
     }
 
     private var apiValue: String? {
         func normalized(_ value: Any?) -> String? {
-            guard let value = value as? String, !value.isEmpty else { return nil }
+            guard let value = value as? String,
+                    !value.isEmpty else { return nil }
+            
             if let separator = value.range(of: "://") {
-                return value[..<separator.lowerBound].lowercased() + value[separator.lowerBound...]
+                return value[
+                    ..<separator.lowerBound].lowercased() +
+                    value[separator.lowerBound...
+                ]
             }
+            
             return "\(scheme)://\(value)"
         }
+        
         if let rawCommand { return rawCommand }
         if let dictionary {
-            return normalized(dictionary["api"]) ?? normalized(dictionary["method"])
-                ?? normalized(dictionary["name"]) ?? normalized(dictionary["action"])
+            return normalized(
+                dictionary["api"]
+            ) ??
+            normalized(dictionary["method"]) ??
+            normalized(dictionary["name"]) ??
+            normalized(dictionary["action"])
         }
-        guard let value = body as? String, !value.contains("{") else { return nil }
+        
+        guard let value = body as? String,
+                !value.contains("{") else { return nil }
+        
         return normalized(value)
     }
 
     private var dictionary: [String: Any]? {
         // 이동 URL의 JSON 쿼리 등을 브릿지 envelope로 오인하지 않습니다.
         if rawCommand != nil { return nil }
+        
         if let dictionary = body as? [String: Any] {
             return expandingNestedEnvelope(in: dictionary)
         }
 
         guard let value = body as? String else { return nil }
+        
         return decodeEnvelope(value)
     }
 
     private func value(for key: String) -> Any? {
-        guard let value = dictionary?[key], !(value is NSNull) else {
+        guard let value = dictionary?[key],
+                !(value is NSNull) else {
             return nil
         }
+        
         return value
     }
 
-    private func decodeEnvelope(_ value: String) -> [String: Any]? {
+    private func decodeEnvelope(
+        _ value: String
+    ) -> [String: Any]? {
         let decodedValues = [
             value.removingPercentEncoding,
             value
@@ -115,11 +158,16 @@ public struct WaterBridgeMessage {
             let trimmedValue = decodedValue.trimmingCharacters(
                 in: .whitespacesAndNewlines
             )
-            if trimmedValue.contains("://"), !trimmedValue.hasPrefix("{"), !hasSchemePrefix(trimmedValue) { continue }
+            if trimmedValue.contains("://"),
+                !trimmedValue.hasPrefix("{"),
+                !hasSchemePrefix(trimmedValue) { continue }
+            
             var candidates = [trimmedValue]
 
             if hasSchemePrefix(trimmedValue) {
-                candidates.append(String(trimmedValue.dropFirst(scheme.count + 3)))
+                candidates.append(
+                    String(trimmedValue.dropFirst(scheme.count + 3))
+                )
             }
 
             if let openingBrace = trimmedValue.firstIndex(of: "{"),
@@ -136,6 +184,7 @@ public struct WaterBridgeMessage {
                       let dictionary = object as? [String: Any] else {
                     continue
                 }
+                
                 return expandingNestedEnvelope(in: dictionary)
             }
         }
@@ -147,9 +196,11 @@ public struct WaterBridgeMessage {
         in dictionary: [String: Any]
     ) -> [String: Any] {
         if let api = dictionary["api"] as? String, hasSchemePrefix(api),
-           let command = api.components(separatedBy: "?").first, !(command.removingPercentEncoding ?? command).contains("{") {
+           let command = api.components(separatedBy: "?").first,
+            !(command.removingPercentEncoding ?? command).contains("{") {
             return dictionary
         }
+        
         guard let api = dictionary["api"] as? String,
               let nestedDictionary = decodeEnvelope(api) else {
             return dictionary

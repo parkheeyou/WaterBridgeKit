@@ -3,14 +3,22 @@ package enum WaterDebugLogMessage {
     package static let defaultMaximumLength = 400
 
     /// 제한은 본문 글자 수이며 생략 안내 길이는 별도입니다. Unicode Character 경계를 유지합니다.
-    package static func preview(_ message: String, maximumLength: Int = defaultMaximumLength) -> String {
+    package static func preview(
+        _ message: String,
+        maximumLength: Int = defaultMaximumLength
+    ) -> String {
         let limit = max(1, maximumLength)
         let length = message.count
+        
         guard length > limit else { return message }
+        
         let tailCount = limit / 4
         let headCount = limit - tailCount
-        return String(message.prefix(headCount))
+        
+        return String(
+            message.prefix(headCount))
             + "\n… [로그 생략: 전체 \(length)자 중 \(length - limit)자 생략] …\n"
-            + String(message.suffix(tailCount))
+            + String(message.suffix(tailCount)
+        )
     }
 }

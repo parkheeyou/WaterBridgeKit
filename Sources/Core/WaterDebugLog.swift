@@ -54,9 +54,19 @@ public final class WaterDebugLogCenter: @unchecked Sendable {
 
     /// maximumMessageLength는 생략 안내를 제외한 본문 최대 글자 수입니다.
     /// 제한을 넘으면 앞 75%와 뒤 25%를 남깁니다. 원본 전체는 저장하지 않습니다.
-    public init(maximumEntryCount: Int = 100, maximumMessageLength: Int = 400) {
-        self.maximumEntryCount = max(1, maximumEntryCount)
-        self.maximumMessageLength = max(1, maximumMessageLength)
+    public init(
+        maximumEntryCount: Int = 100,
+        maximumMessageLength: Int = 400
+    ) {
+        self.maximumEntryCount = max(
+            1,
+            maximumEntryCount
+        )
+        
+        self.maximumMessageLength = max(
+            1,
+            maximumMessageLength
+        )
     }
 
     public func record(
@@ -70,7 +80,10 @@ public final class WaterDebugLogCenter: @unchecked Sendable {
             timestamp: timestamp,
             category: category,
             level: level,
-            message: WaterDebugLogMessage.preview(message, maximumLength: maximumMessageLength)
+            message: WaterDebugLogMessage.preview(
+                message,
+                maximumLength: maximumMessageLength
+            )
         )
 
         lock.lock()
@@ -98,9 +111,13 @@ public final class WaterDebugLogCenter: @unchecked Sendable {
 
     public func exportText() -> String {
         let formatter = ISO8601DateFormatter()
+        
         return entries().map { entry in
             let timestamp = formatter.string(from: entry.timestamp)
-            return "[\(timestamp)][\(entry.category.rawValue)][\(entry.level.rawValue)] \(entry.message)"
+            
+            return "[\(timestamp)]" +
+                "[\(entry.category.rawValue)]" +
+                "[\(entry.level.rawValue)] \(entry.message)"
         }
         .joined(separator: "\n")
     }
