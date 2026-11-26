@@ -12,14 +12,22 @@ public enum WaterDebugLogger {
         _ message: String,
         level: WaterDebugLogLevel = .info
     ) {
-        log(message, category: .event, level: level)
+        log(
+            message,
+            category: .event,
+            level: level
+        )
     }
 
     public static func api(
         _ message: String,
         level: WaterDebugLogLevel = .info
     ) {
-        log(message, category: .api, level: level)
+        log(
+            message,
+            category: .api,
+            level: level
+        )
     }
 
     public static func log(
@@ -29,9 +37,18 @@ public enum WaterDebugLogger {
     ) {
 #if DEBUG
         // 시스템 로그 출력 길이와 무관하게 앱 내 콘솔에 먼저 기록합니다.
-        capture(message, category: category, level: level)
+        capture(
+            message,
+            category: category,
+            level: level
+        )
+        
         let preview = WaterDebugLogMessage.preview(message)
-        logger.log(level: osLogType(for: level), "\(preview, privacy: .public)")
+        
+        logger.log(
+            level: osLogType(for: level),
+            "\(preview, privacy: .public)"
+        )
 #endif
     }
 
@@ -47,7 +64,9 @@ public enum WaterDebugLogger {
         )
     }
 
-    private static func osLogType(for level: WaterDebugLogLevel) -> OSLogType {
+    private static func osLogType(
+        for level: WaterDebugLogLevel
+    ) -> OSLogType {
         switch level {
         case .debug:
             .debug

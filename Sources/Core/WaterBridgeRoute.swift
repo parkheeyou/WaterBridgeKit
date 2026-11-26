@@ -43,7 +43,12 @@ public struct WaterBridgeRoute {
     public let api: String
     public let version: Int
     package let handler: Handler
-    public typealias AsyncHandler = @MainActor (WaterBridgeMessage, WaterBridgeRouteContext) async -> Any
+    
+    public typealias AsyncHandler = @MainActor (
+        WaterBridgeMessage,
+        WaterBridgeRouteContext
+    ) async -> Any
+    
     private let asyncHandler: AsyncHandler?
 
     /// API 이름(예: `appInfo`)으로 등록합니다. 기존 전체 URI 입력은 이름만 추출합니다.
@@ -54,9 +59,19 @@ public struct WaterBridgeRoute {
         handler: @escaping Handler
     ) {
         // 기존 전체 URI 등록도 이름으로 정규화하여 스킴 변경과 무관하게 재사용합니다.
-        let name = api.range(of: "://").map { String(api[$0.upperBound...]) } ?? api
-        precondition(!name.isEmpty && !name.contains(where: { $0.isWhitespace || "?#/".contains($0) }),
-                     "Route에는 쿼리나 경로가 없는 API 이름을 지정하세요.")
+        let name = api.range(of: "://").map {
+            String(api[$0.upperBound...])
+        } ?? api
+        
+        precondition(
+            !name.isEmpty && !name.contains(
+                where: {
+                    $0.isWhitespace || "?#/".contains($0)
+                }
+            ),
+            "Route에는 쿼리나 경로가 없는 API 이름을 지정하세요."
+        )
+        
         self.api = name
         self.version = version
         self.handler = handler
@@ -64,18 +79,43 @@ public struct WaterBridgeRoute {
     }
 
     /// 완료 콜백을 기다리는 앱 기능을 위한 비동기 Route입니다.
-    public init(api: String, version: Int, asyncHandler: @escaping AsyncHandler) {
-        let name = api.range(of: "://").map { String(api[$0.upperBound...]) } ?? api
-        precondition(!name.isEmpty && !name.contains(where: { $0.isWhitespace || "?#/".contains($0) }), "유효한 API 이름이 필요합니다.")
+    public init(
+        api: String,
+        version: Int,
+        asyncHandler: @escaping AsyncHandler
+    ) {
+        let name = api.range(of: "://").map {
+            String(api[$0.upperBound...])
+        } ?? api
+        
+        precondition(
+            !name.isEmpty && !name.contains(
+                where: {
+                    $0.isWhitespace || "?#/".contains($0)
+                }
+            ),
+            "유효한 API 이름이 필요합니다."
+        )
+        
         self.api = name
         self.version = version
-        self.handler = { _, _ in WaterBridgeResponse.failure(message: "비동기 Route는 비동기 응답 경로로 실행해야 합니다.").value }
+        self.handler = { _, _ in
+            WaterBridgeResponse.failure(
+                message: "비동기 Route는 비동기 응답 경로로 실행해야 합니다."
+            ).value
+        }
         self.asyncHandler = asyncHandler
     }
 
     @MainActor
-    package func handleAsync(_ message: WaterBridgeMessage, context: WaterBridgeRouteContext) async -> Any {
-        if let asyncHandler { return await asyncHandler(message, context) }
+    package func handleAsync(
+        _ message: WaterBridgeMessage,
+        context: WaterBridgeRouteContext
+    ) async -> Any {
+        if let asyncHandler {
+            return await asyncHandler(message, context)
+        }
+        
         return handler(message, context)
     }
 
@@ -91,7 +131,10 @@ public struct WaterBridgeRoute {
     }
 
     public var descriptor: WaterBridgeRouteDescriptor {
-        WaterBridgeRouteDescriptor(api: api, version: version)
+        WaterBridgeRouteDescriptor(
+            api: api,
+            version: version
+        )
     }
 
     @MainActor

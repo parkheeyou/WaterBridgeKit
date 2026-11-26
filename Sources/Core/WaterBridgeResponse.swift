@@ -6,7 +6,11 @@ public struct WaterBridgeResponse {
     public let message: String
     public let data: Any
 
-    public init(code: String, message: String, data: Any) {
+    public init(
+        code: String,
+        message: String,
+        data: Any
+    ) {
         self.code = code
         self.message = message
         self.data = data
@@ -22,11 +26,23 @@ public struct WaterBridgeResponse {
         ]
     }
 
-    public static func success(data: Any) -> Self {
-        Self(code: "0000", message: "정상", data: data)
+    public static func success(
+        data: Any
+    ) -> Self {
+        Self(
+            code: "0000",
+            message: "정상",
+            data: data
+        )
     }
 
-    public static func failure(message: String) -> Self {
-        Self(code: "9999", message: message, data: NSNull())
+    public static func failure(
+        message: String
+    ) -> Self {
+        Self(
+            code: "9999",
+            message: message,
+            data: NSNull()
+        )
     }
 }
